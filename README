@@ -18,3 +18,8 @@ Project Description:
   Machine Learning Stuff:
   This is where I try to implement the Spiking Neuron and STDP learning.
   I want to eventually apply genetic algorithms to it somehow.
+  
+  Cellular Automata:
+  I'm not sure if I'm going to pursue this project but it was going
+  to be a framework for simulating cellular automata on a grid on any
+  number of dimensions.
