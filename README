@@ -3,3 +3,18 @@ Although my prefered language is Java I'm still learning and c++ will have to do
 My main reasons for choosing C++ over Java for these projects was because it allows for more native interations
 with the gpu, I want to learn about memory management, and because having C++ under my toolbelt is just good in 
 general.
+
+Project Description:
+  Common:
+  Contains one helper header with stuff that I reuse.
+
+  Cpu:
+  This contains an emulator for a cpu that exists purely for educational purposes and
+  an assembler for said cpu.
+  
+  Evolutionary Assembly:
+  This is my attempt on genetic programming using my emulator and assembler.
+  
+  Machine Learning Stuff:
+  This is where I try to implement the Spiking Neuron and STDP learning.
+  I want to eventually apply genetic algorithms to it somehow.
