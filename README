@@ -1,8 +1,6 @@
 I made this to practice my programming and try to create something that really interests me, machine learning. 
 Although my prefered language is Java, I'm still learning and c++ will have to do.
-My main reasons for choosing C++ over Java for these projects was because it allows for more native interations
-with the gpu, I want to learn about memory management, and because having C++ under my toolbelt is just good in 
-general.
+My main reasons for choosing C++ over Java for these projects was because it allows for more native interations with the gpu, I want to learn about memory management, and because having C++ under my toolbelt is just good in general.
 
 Project Description:
   Common:
