@@ -20,6 +20,10 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="helper.h" />
+    <ClInclude Include="termcolor.hpp" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="funny.cpp" />
   </ItemGroup>
   <PropertyGroup Label="Globals">
     <VCProjectVersion>16.0</VCProjectVersion>

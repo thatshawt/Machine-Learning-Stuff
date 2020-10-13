@@ -21,6 +21,10 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "Cellular Automata", "Cellul
 	EndProjectSection
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "Evolutionary Assembly", "Evolutionary Assembly\Evolutionary Assembly.vcxproj", "{ED403977-A811-4CDE-A605-0FE56ADB7964}"
+	ProjectSection(ProjectDependencies) = postProject
+		{B521FD8A-EEFB-48E7-B7AB-1CC49911B274} = {B521FD8A-EEFB-48E7-B7AB-1CC49911B274}
+		{480C4F93-CD2D-4529-814C-4E605CFB5A5F} = {480C4F93-CD2D-4529-814C-4E605CFB5A5F}
+	EndProjectSection
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "Cuda Test Stuff I Guess", "Cuda Test Stuff I Guess\Cuda Test Stuff I Guess.vcxproj", "{DF902DC8-91D0-43DF-A6E1-D13CA8B16153}"
 EndProject

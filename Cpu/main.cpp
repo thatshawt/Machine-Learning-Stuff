@@ -1,16 +1,20 @@
-#include "Cpu.cpp"
+#include "Cpu2.h"
 #include <chrono>
-#include "helper.h"
+//#include "helper.h"
 
 int main(void) {
+	typedef unsigned char byte;
+
 	cpu::initMaps();
 
 	cpu::CpuSimulator<int> simulator;
 	simulator.verbose = true;
-	simulator.step = true;
+	simulator.step = false;
 
 	byte prog[0xFFFF];
 	int progLength = simulator.assemble(prog, "bruh.txt");
+
+	printf("assembled\n");
 
 	bool doTime = false;
 	if (doTime) {
@@ -22,7 +26,7 @@ int main(void) {
 			simulator.runProgram(prog, progLength);
 			counter += timer.getNano();
 		}
-		printf("Average Execution time: %d ns\n", counter / times);
+		printf("Average Execution time: %d ns\n", (int)counter / times);
 	}
 	else {
 		simulator.runProgram(prog, progLength);

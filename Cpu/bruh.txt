@@ -1,9 +1,3 @@
-mov r0 1
-mov r1 2
-cmp r0 r1
-je label1:
-jmp end:
-
-label1: mov r0 69
-end:
-bruh:
+;new op called mmov
+mov r0 mp   ;copy memory pointer value to r0
+mov r0 [mp] ;copy value that mp is when dereferenced into r0

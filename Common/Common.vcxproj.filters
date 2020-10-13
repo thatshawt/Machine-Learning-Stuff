@@ -18,5 +18,13 @@
     <ClInclude Include="helper.h">
       <Filter>Source Files</Filter>
     </ClInclude>
+    <ClInclude Include="termcolor.hpp">
+      <Filter>Source Files</Filter>
+    </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="funny.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
 </Project>
