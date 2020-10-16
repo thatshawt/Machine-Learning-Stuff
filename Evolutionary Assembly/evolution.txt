@@ -1,2 +1,9 @@
-jmp r10
-add r5 m373 
+mov m50 1 ;variable
+mov m0 50 ;pointer to m50
+mov m1 0  ;pointer to r0
+
+mov f2 1  ;set to memory ptr/mem
+mov ptr 1  ;point to m1
+mov ptr mem;mp = 0
+mov ptr mem;mp = 50
+mov r0 mem;r0 = 1

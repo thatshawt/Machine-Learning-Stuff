@@ -51,7 +51,7 @@
 #define GRAPHICS_SIZE 20
 #endif
 
-#define FLAGS 2
+#define FLAGS 4
 
 namespace cpu {
 	typedef unsigned char byte;
@@ -62,7 +62,8 @@ namespace cpu {
 		MEMORY = 2,
 		FLAG = 3,
 		GRAPHICS = 4,
-		NOTHING = 5
+		NOTHING = 5,
+		POINTER = 6
 	};
 
 #define NUMBER cpu::MemoryType::NUMBER
@@ -102,7 +103,7 @@ namespace cpu {
 
 	//TODO: add range checks for the different memory types
 	CPU_T
-	inline OpArgument<cpu_t> string_to_arg(std::string arg) {
+		inline OpArgument<cpu_t> string_to_arg(std::string arg) {
 		if (arg.length() <= 0) return { NOTHING,0 };
 		if (opMap.count(toLower(arg))) return { NOTHING,0 };//throw error cus its not supposed to be an op
 
@@ -136,7 +137,7 @@ namespace cpu {
 
 	//this accepts an entire opcode the other method accepts only single args
 	CPU_T
-	inline std::pair<OpArgument<cpu_t>, OpArgument<cpu_t>> str_to_args(std::string str) {
+		inline std::pair<OpArgument<cpu_t>, OpArgument<cpu_t>> str_to_args(std::string str) {
 		std::vector<std::string> parts = splitString(&str, ' ');
 		//std::tuple<std::string, OpArgument, OpArgument> parsedParts;
 		switch (parts.size()) {
@@ -153,7 +154,7 @@ namespace cpu {
 	}
 
 	CPU_T
-	inline std::string arg_to_string(OpArgument<cpu_t> arg) {
+		inline std::string arg_to_string(OpArgument<cpu_t> arg) {
 		if (arg.type == NOTHING) return std::string("");
 		std::string prefix = getPrefix(arg.type);
 		std::string suffix = std::to_string(arg.val);
@@ -236,12 +237,20 @@ namespace cpu {
 		//opArgs.insert(toCombo("gmov", { REGISTER,MEMORY,/*GRAPHICS,*/FLAG,NUMBER }, {}));
 	}
 
+	enum PointerFlags {
+		MP = 1,
+		GP = 2
+	};
+
 	CPU_T
 		class CpuSimulator {
 		private:
 			cpu_t registers[REGISTER_SIZE];//16 i guess idk
-			cpu_t flags[FLAGS];//0 = GT, 1 = E
+			cpu_t flags[FLAGS]; //0 = GT, 1 = E, 2 = POINTER
+
 			cpu_t memory[MEMORY_SIZE];//the memory O.o
+			cpu_t mp = 0;//memory pointer
+
 			//TODO: add stack pointers and instructions
 			cpu_t ip = 0;//instruction pointer
 
@@ -251,6 +260,33 @@ namespace cpu {
 			cpu_t gp = 0;//graphics pointer
 
 			std::atomic<bool> interruptz{ false };
+
+			PointerFlags getPointerFlag1() {//TODO: error check here
+				return static_cast<PointerFlags>(flags[2]);
+			}
+			PointerFlags getPointerFlag2() {//TODO: error check here
+				return static_cast<PointerFlags>(flags[3]);
+			}
+
+			cpu_t* flagToPointer(PointerFlags flag) {
+				switch (flag) {
+				case MP:
+					return &mp;
+				case GP:
+					return &gp;
+				}
+				return nullptr;
+			}
+
+			cpu_t* flagToMemory(PointerFlags flag) {
+				switch (flag) {
+				case MP:
+					return &memory[0];
+				case GP:
+					return &graphics[0];
+				}
+				return nullptr;
+			}
 
 			void initMaps() {
 				typedef std::pair<MemoryType, MemoryTypeRange<cpu_t>> rangePair;
@@ -381,6 +417,14 @@ namespace cpu {
 			}
 
 			bool executeOp(cpu_t op, cpu_t left, cpu_t right) {
+				PointerFlags pFlag1 = getPointerFlag1();
+				cpu_t* pMemory1 = flagToMemory(pFlag1);
+				cpu_t* pPointer1 = flagToPointer(pFlag1);
+				
+				PointerFlags pFlag2 = getPointerFlag2();
+				cpu_t* pMemory2 = flagToMemory(pFlag2);
+				cpu_t* pPointer2 = flagToPointer(pFlag2);
+
 				if (verbose) {
 					printf("executed op:%d, left: %d, right: %d\n", op, left, right);
 					printf("ip: %d\n", ip);
@@ -395,45 +439,55 @@ namespace cpu {
 					registers[left] = registers[right];
 					break;
 				case 0x02://mov register ValueAtMemory
-					registers[left] = memory[right];
+					registers[left] = pMemory2[right];
 					break;
 				case 0x03://mov register ValueAtMemory
 					registers[left] = flags[right];
 					break;
 				case 0x04://mov register ValueAtMemory
-					registers[left] = gp;
+					registers[left] = (*pPointer2);
 					break;
 
 				case 0x05://mov memory number
-					memory[left] = right;
+					//memory[left] = right;
+					pMemory1[left] = right;
 					break;
 				case 0x06://mov memory register
-					memory[left] = registers[right];
+					//memory[left] = registers[right];
+					pMemory1[left] = registers[right];
 					break;
 				case 0x07://mov memory ValueAtMemory
-					memory[left] = memory[right];
+					//memory[left] = memory[right];
+					pMemory1[left] = pMemory2[right];
 					break;
 				case 0x08://mov memory flag
-					memory[left] = flags[right];
+					//memory[left] = flags[right];
+					pMemory1[left] = flags[right];
 					break;
 				case 0x09://mov memory flag
-					memory[left] = gp;
+					//memory[left] = gp;
+					pMemory1[left] = (*pPointer2);
 					break;
 
 				case 0x0A://mov gp number
-					gp = right;
+					//gp = right;
+					(*pPointer1) = right;
 					break;
 				case 0x0B://mov gp register
-					gp = registers[right];
+					//gp = registers[right];
+					(*pPointer1) = registers[right];
 					break;
 				case 0x0C://mov gp ValueAtMemory
-					gp = memory[right];
+					//gp = memory[right];
+					(*pPointer1) = pMemory2[right];
 					break;
 				case 0x0D://mov gp flag
-					gp = flags[right];
+					//gp = flags[right];
+					(*pPointer1) = flags[right];
 					break;
 				case 0x0E://mov gp naaaaannniiIIIII!!!!!
-					gp = gp;//ecks dee!?!?!??!
+					//gp = gp;//ecks dee!?!?!??!
+					(*pPointer1) = (*pPointer2);//ecks dee!?!?!??!
 					break;
 
 
@@ -445,36 +499,44 @@ namespace cpu {
 					registers[left] += registers[right];
 					break;
 				case 0x12://add register valueAtMemory
-					registers[left] += memory[right];
+					registers[left] += pMemory2[right];
 					break;
 				case 0x13://add register valueAtMemory
 					registers[left] += flags[right];
 					break;
 
 				case 0x14://add memory number
-					memory[left] += right;
+					//memory[left] += right;
+					pMemory1[left] += right;
 					break;
 				case 0x15://add memory register
-					memory[left] += registers[right];
+					//memory[left] += registers[right];
+					pMemory1[left] += registers[right];
 					break;
 				case 0x16://add memory valueAtMemory
-					memory[left] += memory[right];
+					//memory[left] += memory[right];
+					pMemory1[left] += pMemory2[right];
 					break;
 				case 0x17://add memory valueAtMemory
-					memory[left] += flags[right];
+					//memory[left] += flags[right];
+					pMemory1[left] += flags[right];
 					break;
 
 				case 0x18://add memory number
-					gp += right;
+					//gp += right;
+					(*pPointer1) += right;
 					break;
 				case 0x19://add memory register
-					gp += registers[right];
+					//gp += registers[right];
+					(*pPointer1) += registers[right];
 					break;
 				case 0x1A://add memory valueAtMemory
-					gp += memory[right];
+					//gp += memory[right];
+					(*pPointer1) += pMemory2[right];
 					break;
 				case 0x1B://add memory valueAtMemory
-					gp += flags[right];
+					//gp += flags[right];
+					(*pPointer1) += flags[right];
 					break;
 
 
@@ -487,36 +549,44 @@ namespace cpu {
 					registers[left] -= registers[right];
 					break;
 				case 0x22://sub register valueAtMemory
-					registers[left] -= memory[right];
+					registers[left] -= pMemory2[right];
 					break;
 				case 0x23://sub register valueAtMemory
 					registers[left] -= flags[right];
 					break;
 
 				case 0x24://sub memory number
-					memory[left] -= right;
+					//memory[left] -= right;
+					pMemory1[left] -= right;
 					break;
 				case 0x25://sub memory register
-					memory[left] -= registers[right];
+					//memory[left] -= registers[right];
+					pMemory1[left] -= registers[right];
 					break;
 				case 0x26://sub memory valueAtMemory
-					memory[left] -= memory[right];
+					//memory[left] -= memory[right];
+					pMemory1[left] -= pMemory2[right];
 					break;
 				case 0x27://sub memory valueAtMemory
-					memory[left] -= flags[right];
+					//memory[left] -= flags[right];
+					pMemory1[left] -= flags[right];
 					break;
 
 				case 0x28://sub gp number
-					gp -= right;
+					//gp -= right;
+					(*pPointer1) -= right;
 					break;
 				case 0x29://sub gp register
-					gp -= registers[right];
+					//gp -= registers[right];
+					(*pPointer1) -= registers[right];
 					break;
 				case 0x2A://sub gp valueAtMemory
-					gp -= memory[right];
+					//gp -= memory[right];
+					(*pPointer1) -= pMemory2[right];
 					break;
 				case 0x2B://sub gp valueAtMemory
-					gp -= flags[right];
+					//gp -= flags[right];
+					(*pPointer1) -= flags[right];
 					break;
 
 					//branchless coding ftw
@@ -554,36 +624,44 @@ namespace cpu {
 					registers[left] *= registers[right];
 					break;
 				case 0x42://multiply register valueAtMemory
-					registers[left] *= memory[right];
+					registers[left] *= pMemory2[right];
 					break;
 				case 0x43://multiply register valueAtMemory
 					registers[left] *= flags[right];
 					break;
 
 				case 0x44://multiply memory number
-					memory[left] *= right;
+					//memory[left] *= right;
+					pMemory1[left] *= right;
 					break;
 				case 0x45://multiply memory register
-					memory[left] *= registers[right];
+					//memory[left] *= registers[right];
+					pMemory1[left] *= registers[right];
 					break;
 				case 0x46://multiply memory valueAtMemory
-					memory[left] *= memory[right];
+					//memory[left] *= memory[right];
+					pMemory1[left] *= pMemory2[right];
 					break;
 				case 0x47://multiply memory valueAtMemory
-					memory[left] *= flags[right];
+					//memory[left] *= flags[right];
+					pMemory1[left] *= flags[right];
 					break;
 
 				case 0x48://multiply memory number
-					gp *= right;
+					//gp *= right;
+					(*pPointer1) *= right;
 					break;
 				case 0x49://multiply memory register
-					gp *= registers[right];
+					//gp *= registers[right];
+					(*pPointer1) *= registers[right];
 					break;
 				case 0x4A://multiply memory valueAtMemory
-					gp *= memory[right];
+					//gp *= memory[right];
+					(*pPointer1) *= pMemory2[right];
 					break;
 				case 0x4B://multiply memory valueAtMemory
-					gp *= flags[right];
+					//gp *= flags[right];
+					(*pPointer1) *= flags[right];
 					break;
 
 
@@ -597,8 +675,8 @@ namespace cpu {
 					flags[1] = registers[left] == registers[right];
 					break;
 				case 0x52://compare register memory
-					flags[0] = registers[left] > memory[right];
-					flags[1] = registers[left] == memory[right];
+					flags[0] = registers[left] > pMemory2[right];
+					flags[1] = registers[left] == pMemory2[right];
 					break;
 				case 0x53://compare register flag
 					flags[0] = registers[left] > flags[right];
@@ -606,37 +684,53 @@ namespace cpu {
 					break;
 
 				case 0x54://compare memory number
-					flags[0] = memory[left] > right;
-					flags[1] = memory[left] == right;
+					//flags[0] = memory[left] > right;
+					//flags[1] = memory[left] == right;
+					flags[0] = pMemory1[left] > right;
+					flags[1] = pMemory1[left] == right;
 					break;
 				case 0x55://compare memory register
-					flags[0] = memory[left] > registers[right];
-					flags[1] = memory[left] == registers[right];
+					//flags[0] = memory[left] > registers[right];
+					//flags[1] = memory[left] == registers[right];
+					flags[0] = pMemory1[left] > registers[right];
+					flags[1] = pMemory1[left] == registers[right];
 					break;
 				case 0x56://compare memory memory
-					flags[0] = memory[left] > memory[right];
-					flags[1] = memory[left] == memory[right];
+					//flags[0] = memory[left] > memory[right];
+					//flags[1] = memory[left] == memory[right];
+					flags[0] = pMemory1[left] > pMemory2[right];
+					flags[1] = pMemory1[left] == pMemory2[right];
 					break;
 				case 0x57://compare memory flag
-					flags[0] = memory[left] > flags[right];
-					flags[1] = memory[left] == flags[right];
+					//flags[0] = memory[left] > flags[right];
+					//flags[1] = memory[left] == flags[right];
+					flags[0] = pMemory1[left] > flags[right];
+					flags[1] = pMemory1[left] == flags[right];
 					break;
 
 				case 0x58://compare memory number
-					flags[0] = gp > right;
-					flags[1] = gp == right;
+					//flags[0] = gp > right;
+					//flags[1] = gp == right;
+					flags[0] = (*pPointer1) > right;
+					flags[1] = (*pPointer1) == right;
 					break;
 				case 0x59://compare memory register
-					flags[0] = gp > registers[right];
-					flags[1] = gp == registers[right];
+					//flags[0] = gp > registers[right];
+					//flags[1] = gp == registers[right];
+					flags[0] = (*pPointer1) > registers[right];
+					flags[1] = (*pPointer1) == registers[right];
 					break;
 				case 0x5A://compare memory memory
-					flags[0] = gp > memory[right];
-					flags[1] = gp == memory[right];
+					//flags[0] = gp > memory[right];
+					//flags[1] = gp == memory[right];
+					flags[0] = (*pPointer1) > pMemory2[right];
+					flags[1] = (*pPointer1) == pMemory2[right];
 					break;
 				case 0x5B://compare memory flag
-					flags[0] = gp > flags[right];
-					flags[1] = gp == flags[right];
+					//flags[0] = gp > flags[right];
+					//flags[1] = gp == flags[right];
+					flags[0] = (*pPointer1) > flags[right];
+					flags[1] = (*pPointer1) == flags[right];
 					break;
 
 
@@ -647,36 +741,44 @@ namespace cpu {
 					registers[left] |= registers[right];
 					break;
 				case 0x62://OR register valueAtMemory
-					registers[left] |= memory[right];
+					registers[left] |= pMemory2[right];
 					break;
 				case 0x63://OR register valueAtMemory
 					registers[left] |= flags[right];
 					break;
 
 				case 0x64://OR memory number
-					memory[left] |= right;
+					//memory[left] |= right;
+					pMemory1[left] |= right;
 					break;
 				case 0x65://OR memory register
-					memory[left] |= registers[right];
+					//memory[left] |= registers[right];
+					pMemory1[left] |= registers[right];
 					break;
 				case 0x66://OR memory valueAtMemory
-					memory[left] |= memory[right];
+					//memory[left] |= memory[right];
+					pMemory1[left] |= pMemory2[right];
 					break;
 				case 0x67://OR memory valueAtMemory
-					memory[left] |= flags[right];
+					//memory[left] |= flags[right];
+					pMemory1[left] |= flags[right];
 					break;
 
 				case 0x68://OR gp number
-					gp |= right;
+					//gp |= right;
+					(*pPointer1) |= right;
 					break;
 				case 0x69://OR gp register
-					gp |= registers[right];
+					//gp |= registers[right];
+					(*pPointer1) |= registers[right];
 					break;
 				case 0x6A://OR gp valueAtMemory
-					gp |= memory[right];
+					//gp |= memory[right];
+					(*pPointer1) |= pMemory2[right];
 					break;
 				case 0x6B://OR gp valueAtMemory
-					gp |= flags[right];
+					//gp |= flags[right];
+					(*pPointer1) |= flags[right];
 					break;
 
 
@@ -687,36 +789,44 @@ namespace cpu {
 					registers[left] &= registers[right];
 					break;
 				case 0x72://AND register valueAtMemory
-					registers[left] &= memory[right];
+					registers[left] &= pMemory2[right];
 					break;
 				case 0x73://AND register valueAtMemory
 					registers[left] &= flags[right];
 					break;
 
 				case 0x74://AND memory number
-					memory[left] &= right;
+					//memory[left] &= right;
+					pMemory1[left] &= right;
 					break;
 				case 0x75://AND memory register
-					memory[left] &= registers[right];
+					//memory[left] &= registers[right];
+					pMemory1[left] &= registers[right];
 					break;
 				case 0x76://AND memory valueAtMemory
-					memory[left] &= memory[right];
+					//memory[left] &= memory[right];
+					pMemory1[left] &= pMemory2[right];
 					break;
 				case 0x77://AND memory valueAtMemory
-					memory[left] &= flags[right];
+					//memory[left] &= flags[right];
+					pMemory1[left] &= flags[right];
 					break;
 
 				case 0x78://AND gp number
-					gp &= right;
+					//gp &= right;
+					(*pPointer1) &= right;
 					break;
 				case 0x79://AND gp register
-					gp &= registers[right];
+					//gp &= registers[right];
+					(*pPointer1) &= registers[right];
 					break;
 				case 0x7A://AND gp valueAtMemory
-					gp &= memory[right];
+					//gp &= memory[right];
+					(*pPointer1) &= pMemory2[right];
 					break;
 				case 0x7B://AND gp valueAtMemory
-					gp &= flags[right];
+					//gp &= flags[right];
+					(*pPointer1) &= flags[right];
 					break;
 
 
@@ -728,36 +838,44 @@ namespace cpu {
 					registers[left] ^= registers[right];
 					break;
 				case 0x82://XOR register valueAtMemory
-					registers[left] ^= memory[right];
+					registers[left] ^= pMemory2[right];
 					break;
 				case 0x83://XOR register valueAtMemory
 					registers[left] ^= flags[right];
 					break;
 
 				case 0x84://XOR memory number
-					memory[left] ^= right;
+					pMemory1[left] ^= right;
+					//memory[left] ^= right;
 					break;
 				case 0x85://XOR memory register
-					memory[left] ^= registers[right];
+					pMemory1[left] ^= registers[right];
+					//memory[left] ^= registers[right];
 					break;
 				case 0x86://XOR memory valueAtMemory
-					memory[left] ^= memory[right];
+					pMemory1[left] ^= pMemory2[right];
+					//memory[left] ^= memory[right];
 					break;
 				case 0x87://XOR memory valueAtMemory
-					memory[left] ^= flags[right];
+					pMemory1[left] ^= flags[right];
+					//memory[left] ^= flags[right];
 					break;
 
 				case 0x88://XOR gp number
-					gp ^= right;
+					(*pPointer1) ^= right;
+					//gp ^= right;
 					break;
 				case 0x89://XOR gp register
-					gp ^= registers[right];
+					(*pPointer1) ^= registers[right];
+					//gp ^= registers[right];
 					break;
 				case 0x8A://XOR gp valueAtMemory
-					gp ^= memory[right];
+					(*pPointer1) ^= pMemory2[right];
+					//gp ^= memory[right];
 					break;
 				case 0x8B://XOR gp valueAtMemory
-					gp ^= flags[right];
+					(*pPointer1) ^= flags[right];
+					//gp ^= flags[right];
 					break;
 
 
@@ -766,13 +884,15 @@ namespace cpu {
 					registers[left] = ~registers[left];
 					break;
 				case 0x91://NOT memory
-					memory[left] = ~memory[left];
+					pMemory1[left] = ~pMemory1[left];
+					//memory[left] = ~memory[left];
 					break;
 				case 0x92://NOT flag
 					flags[left] = ~flags[left];
 					break;
 				case 0x93://NOT gp
-					gp = ~gp;
+					(*pPointer1) = ~(*pPointer1);
+					//gp = ~gp;
 					break;
 
 
@@ -783,36 +903,44 @@ namespace cpu {
 					registers[left] << registers[right];
 					break;
 				case 0xA2://shiftLeft register valueAtMemory
-					registers[left] << memory[right];
+					registers[left] << pMemory2[right];
 					break;
 				case 0xA3://shiftLeft register valueAtMemory
 					registers[left] << flags[right];
 					break;
 
 				case 0xA4://shiftLeft memory number
-					memory[left] << right;
+					pMemory1[left] << right;
+					//memory[left] << right;
 					break;
 				case 0xA5://shiftLeft memory register
-					memory[left] << registers[right];
+					pMemory1[left] << registers[right];
+					//memory[left] << registers[right];
 					break;
 				case 0xA6://shiftLeft memory valueAtMemory
-					memory[left] << memory[right];
+					pMemory1[left] << pMemory2[right];
+					//memory[left] << memory[right];
 					break;
 				case 0xA7://shiftLeft memory valueAtMemory
-					memory[left] << flags[right];
+					pMemory1[left] << flags[right];
+					//memory[left] << flags[right];
 					break;
 
 				case 0xA8://shiftLeft gp number
-					gp << right;
+					(*pPointer1) << right;
+					//gp << right;
 					break;
 				case 0xA9://shiftLeft gp register
-					gp << registers[right];
+					(*pPointer1) << registers[right];
+					//gp << registers[right];
 					break;
 				case 0xAA://shiftLeft gp valueAtMemory
-					gp << memory[right];
+					(*pPointer1) << pMemory2[right];
+					//gp << memory[right];
 					break;
 				case 0xAB://shiftLeft gp valueAtMemory
-					gp << flags[right];
+					(*pPointer1) << flags[right];
+					//gp << flags[right];
 					break;
 
 
@@ -823,54 +951,62 @@ namespace cpu {
 					registers[left] >> registers[right];
 					break;
 				case 0xB2://shiftRight register valueAtMemory
-					registers[left] >> memory[right];
+					registers[left] >> pMemory2[right];
 					break;
 				case 0xB3://shiftRight register valueAtMemory
 					registers[left] >> flags[right];
 					break;
 
 				case 0xB4://shiftRight memory number
-					memory[left] >> right;
+					pMemory1[left] >> right;
+					//memory[left] >> right;
 					break;
 				case 0xB5://shiftRight memory register
-					memory[left] >> registers[right];
+					pMemory1[left] >> registers[right];
+					//memory[left] >> registers[right];
 					break;
 				case 0xB6://shiftRight memory valueAtMemory
-					memory[left] >> memory[right];
+					pMemory1[left] >> pMemory2[right];
+					//memory[left] >> memory[right];
 					break;
 				case 0xB7://shiftRight memory valueAtMemory
-					memory[left] >> flags[right];
+					pMemory1[left] >> flags[right];
+					//memory[left] >> flags[right];
 					break;
 
 				case 0xB8://shiftRight gp number
-					gp >> right;
+					(*pPointer1) >> right;
+					//gp >> right;
 					break;
 				case 0xB9://shiftRight gp register
-					gp >> registers[right];
+					(*pPointer1) >> registers[right];
+					//gp >> registers[right];
 					break;
 				case 0xBA://shiftRight gp valueAtMemory
-					gp >> memory[right];
+					(*pPointer1) >> pMemory2[right];
+					//gp >> memory[right];
 					break;
 				case 0xBB://shiftRight gp valueAtMemory
-					gp >> flags[right];
+					(*pPointer1) >> flags[right];
+					//gp >> flags[right];
 					break;
 
 
-				case 0xC0://gmov number
-					graphics[gp] = left;
-					break;
-				case 0xC1://gmov register
-					graphics[gp] = registers[left];
-					break;
-				case 0xC2://gmov valueAtMemory
-					graphics[gp] = memory[left];
-					break;
-				case 0xC3://gmov flag
-					graphics[gp] = flags[left];
-					break;
-				case 0xC4://gmov gp
-					graphics[gp] = gp;//why lol
-					break;
+				//case 0xC0://gmov number
+				//	graphics[gp] = left;
+				//	break;
+				//case 0xC1://gmov register
+				//	graphics[gp] = registers[left];
+				//	break;
+				//case 0xC2://gmov valueAtMemory
+				//	graphics[gp] = memory[left];
+				//	break;
+				//case 0xC3://gmov flag
+				//	graphics[gp] = flags[left];
+				//	break;
+				//case 0xC4://gmov gp
+				//	graphics[gp] = gp;//why lol
+				//	break;
 
 				default:
 					if (verbose)printf("unknown op '%c'\n", op);
@@ -943,7 +1079,7 @@ namespace cpu {
 
 				if (verbose)printf("PREPARSE\n");
 				for (int i = 0; i < strLength; i++) {
-					const char c = (i == strLength-1) ? ' ' : str[i];//TODO: added this
+					const char c = (i == strLength - 1) ? ' ' : str[i];//TODO: added this
 					if (c == ';')isComment = true;
 					//isComment = (c == ';');
 					//printf("'%c%s' ", c, isComment ? "(com)" : "");
@@ -1056,7 +1192,7 @@ namespace cpu {
 						//!preParse && 
 						else if (isInteger(identifier.c_str())) {
 							int num = stol(identifier);
-							if (abs(num) > std::numeric_limits<cpu_t>::max()-1) {
+							if (abs(num) > std::numeric_limits<cpu_t>::max() - 1) {
 								if (verbose)printf("number %d is too big, bigger than %d\n", num, sizeof(cpu_t));
 								return 0;
 							}
@@ -1147,7 +1283,7 @@ namespace cpu {
 								if (/*isInteger(identifier.c_str())*/
 									left == NUMBER || (currentOp[0] == 0x30 && left == REGISTER)) {
 									int num = atoi(identifier.c_str());
-									if (abs(num) > std::numeric_limits<cpu_t>::max()-1) {
+									if (abs(num) > std::numeric_limits<cpu_t>::max() - 1) {
 										if (verbose)printf("number %d is too big, bigger than %d\n", num, (int)sizeof(short));
 										return 0;
 									}
