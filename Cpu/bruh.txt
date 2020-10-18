@@ -1,3 +1,4 @@
-;new op called mmov
-mov r0 mp   ;copy memory pointer value to r0
-mov r0 [mp] ;copy value that mp is when dereferenced into r0
+mov f2 1  ;choose mem
+
+mov ptr 1 ;ptr = &mem[1]
+mov mem 2 ;(*ptr) = 2

@@ -1,3 +1,5 @@
+#define MEMORY_SIZE 5
+
 #include "Cpu2.h"
 #include <chrono>
 //#include "helper.h"
@@ -36,6 +38,9 @@ int main(void) {
 	simulator.dumpFlags();
 	printf("\n");
 	simulator.dumpPointers();
+	printf("\n");
+	simulator.dumpMemory();
+	printf("\n");
 
 	getchar();
 

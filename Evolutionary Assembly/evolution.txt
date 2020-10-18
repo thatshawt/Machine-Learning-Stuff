@@ -1,9 +1,4 @@
-mov m50 1 ;variable
-mov m0 50 ;pointer to m50
-mov m1 0  ;pointer to r0
+mov f1 1  ;choose mem
 
-mov f2 1  ;set to memory ptr/mem
-mov ptr 1  ;point to m1
-mov ptr mem;mp = 0
-mov ptr mem;mp = 50
-mov r0 mem;r0 = 1
+mov ptr 1 ;ptr = &mem[1]
+mov mem 2 ;(*ptr) = 2

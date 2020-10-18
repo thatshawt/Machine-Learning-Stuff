@@ -1,7 +1,7 @@
 #pragma once
 #include "Cpu2.H"
 #include <thread>
-#include <mutex>
+//#include <mutex>
 
 //multithreading was fun but i dont think we need it rn
 //maybe later we can use it to test programs faster or some poop like that
@@ -22,7 +22,7 @@ namespace cpu {
 		std::atomic<bool> isDoneDying{ false };
 		//std::atomic<bool> initComplete{ false };
 		std::thread theThread;
-		std::mutex mu;
+		//std::mutex mu;
 
 		void subThreadRunThing(byte* code, int progLength) {
 			//printf("subThread id: %d\n", std::this_thread::get_id());

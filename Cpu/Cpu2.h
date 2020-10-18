@@ -33,6 +33,9 @@
 #ifdef NOTHING
 #undef NOTHING
 #endif // NUMBER
+#ifdef POINTER
+#undef POINTER
+#endif // NUMBER
 
 #define CPU_T template <class cpu_t>
 //#define CPU_T template< class cpu_t = int, class = class std::enable_if<std::is_arithmetic<cpu_t>::value, cpu_t>::type>
@@ -61,9 +64,9 @@ namespace cpu {
 		REGISTER = 1,
 		MEMORY = 2,
 		FLAG = 3,
-		GRAPHICS = 4,
+		POINTER = 4,
 		NOTHING = 5,
-		POINTER = 6
+		GRAPHICS = 6
 	};
 
 #define NUMBER cpu::MemoryType::NUMBER
@@ -72,6 +75,7 @@ namespace cpu {
 #define FLAG cpu::MemoryType::FLAG
 #define GRAPHICS cpu::MemoryType::GRAPHICS
 #define NOTHING cpu::MemoryType::NOTHING
+#define POINTER cpu::MemoryType::POINTER
 
 	CPU_T
 		struct OpArgument {
@@ -369,6 +373,13 @@ namespace cpu {
 				printf("gp: %d\n", gp);
 			}
 
+			void dumpMemory(int maxA = MEMORY_SIZE) {
+				const int maxZ = std::max(0, std::min(maxA, MEMORY_SIZE));
+				for (int i = 0; i < maxZ; i++) {
+					printf("m%d: %d\n", i, memory[i]);
+				}
+			}
+
 			bool setRegister(unsigned char r, size_t value) {
 				if (r > REGISTER_SIZE - 1 || r < 0) return false;//bound check
 				registers[r] = value;
@@ -413,6 +424,7 @@ namespace cpu {
 
 					//if (verbose)printBitArray(code, getOpSize(), 0);
 					executeOp(op);
+					dumpFlags();
 				}
 			}
 
@@ -488,6 +500,9 @@ namespace cpu {
 				case 0x0E://mov gp naaaaannniiIIIII!!!!!
 					//gp = gp;//ecks dee!?!?!??!
 					(*pPointer1) = (*pPointer2);//ecks dee!?!?!??!
+					break;
+				case 0x0F:
+					flags[left] = right;
 					break;
 
 
@@ -1053,7 +1068,7 @@ namespace cpu {
 					file.close();
 					if (verbose)printf("%s\n", str.c_str());
 				}
-				str.append(" ");//"do this in rememberance of me" -Big Space
+				str.append(" ");// "do this in rememberance of me" -Big Space
 				if (verbose)printf("closing file\n\n");
 				return assemble(prog, str.c_str(), str.size());
 			}
@@ -1072,14 +1087,14 @@ namespace cpu {
 				bool preParse = true;
 				bool isComment = false;
 				bool isMacro = false;
-				//bool applyingMacro = false;//to be implemented STINKY NOT
+				//bool applyingMacro = false;//to be implemented STINKY NOT //commenting on my comments!!?!?!??!??
 				std::string macroName;
 				std::string macroBody;
 				int macroIndex = 0;
 
 				if (verbose)printf("PREPARSE\n");
 				for (int i = 0; i < strLength; i++) {
-					const char c = (i == strLength - 1) ? ' ' : str[i];//TODO: added this
+					const char c = (i == strLength - 1) ? ' ' : str[i];//TODO: added this //what did i say here
 					if (c == ';')isComment = true;
 					//isComment = (c == ';');
 					//printf("'%c%s' ", c, isComment ? "(com)" : "");
@@ -1169,9 +1184,10 @@ namespace cpu {
 								right = FLAG;
 							}
 						}
-						else if (identifier[0] == 'm' && opI != 0) {//tis but a memory locationN
-							currentOp[opI] = atoi(identifier.substr(1, identifier.size() - 1).c_str());//ecks dee
-							if (verbose)printf("%s -> memory %d\n", identifier.c_str(), currentOp[opI]);
+						else if (/*identifier[0] == 'm' && opI != 0*/
+								identifier == "mem" && opI > 0) {//tis but a memory locationN
+							//currentOp[opI] = atoi(identifier.substr(1, identifier.size() - 1).c_str());//ecks dee
+							//if (verbose)printf("%s -> memory %d\n", identifier.c_str(), currentOp[opI]);
 							if (opI == 1) {
 								left = MEMORY;
 							}
@@ -1180,13 +1196,17 @@ namespace cpu {
 							}
 						}
 						//tis but the graphics pointer
-						else if (identifier == "gp" && opI != 0) {
-							if (verbose)printf("graphics pointer\n");
+						else if (/*identifier == "gp" && opI != 0*/
+							identifier == "ptr" && opI > 0) {
+							if (verbose)printf("pointer\n");
+							//if (verbose)printf("graphics pointer\n");
 							if (opI == 1) {
-								left = GRAPHICS;
+								left = POINTER;
+								//left = GRAPHICS;
 							}
 							else if (opI == 2) {
-								right = GRAPHICS;
+								right = POINTER;
+								//right = GRAPHICS;
 							}
 						}
 						//!preParse && 
@@ -1306,13 +1326,13 @@ namespace cpu {
 								if (verbose)printf("added the not opcode thing currenOp[0]: %d\n", currentOp[0]);
 							}
 							//gmov time lets goooo
-							else if (currentOp[0] == opMap.at("gmov")) {
-								currentOp[0] += static_cast<int>(left);//specific to gmov instructions
-								if (!preParse)addToProgram(program, currentOp, programI);
-								programI += getOpSize();
-								opI = 0;
-								if (verbose)printf("added gmov lets goo currenOp[0]: %d\n", currentOp[0]);
-							}
+							//else if (currentOp[0] == opMap.at("gmov")) {
+							//	currentOp[0] += static_cast<int>(left);//specific to gmov instructions
+							//	if (!preParse)addToProgram(program, currentOp, programI);
+							//	programI += getOpSize();
+							//	opI = 0;
+							//	if (verbose)printf("added gmov lets goo currenOp[0]: %d\n", currentOp[0]);
+							//}
 							else if (preParse && isLabel) {
 								programI += getOpSize();
 								opI = 0;

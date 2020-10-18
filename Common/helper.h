@@ -54,7 +54,7 @@ static void fill_n(std::vector<T> v, T n) {
 }
 
 template<class type>
-std::string array_to_string(type* begin, int size) {
+static std::string array_to_string(type* begin, int size) {
 	std::string str = "{ ";
 	for (int i = 0; i < size; i++) {
 		str.append(std::to_string(*(begin+i)) + ", ");
@@ -85,7 +85,7 @@ static void print_array(type data, int length, char separator) {
 }
 
 //https://stackoverflow.com/questions/16388510/evaluate-a-string-with-a-switch-in-c/16388594
-static constexpr unsigned int str2int(const char* str, int h = 0)
+constexpr unsigned int str2int(const char* str, int h = 0)
 {
 	return !str[h] ? 5381 : (str2int(str, h + 1) * 33) ^ str[h];
 }
@@ -292,6 +292,6 @@ public:
 };
 
 //http://www.cplusplus.com/reference/algorithm/max/
-template <class T> const T& max(const T& a, const T& b) {
+template <class T> static const T& max(const T& a, const T& b) {
 	return (a < b) ? b : a;     // or: return comp(a,b)?b:a; for version (2)
 }
