@@ -8,7 +8,7 @@ Project Description:
 
   Cpu:
   This contains an emulator for a cpu that exists purely for educational purposes and
-  an assembler for said cpu.
+  an assembler.
   
   Evolutionary Assembly:
   This is my attempt on genetic programming using my emulator and assembler.
