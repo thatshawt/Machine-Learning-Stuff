@@ -4,6 +4,7 @@
 
 #include <algorithm>
 #include <string>
+#include <cstring>
 #include <map>
 #include <fstream>
 #include <iostream>
@@ -11,6 +12,7 @@
 #include <exception>
 #include <stdexcept>
 #include <ctype.h>
+#include <atomic>
 
 #include "helper.h"
 //#include "../Evolutionary Assembly/testImp.cpp"
@@ -37,7 +39,7 @@
 #undef POINTER
 #endif // NUMBER
 
-#define CPU_T template <class cpu_t>
+#define CPU_TEMPLATE template<class cpu_t>
 //#define CPU_T template< class cpu_t = int, class = class std::enable_if<std::is_arithmetic<cpu_t>::value, cpu_t>::type>
 //#define CPU_T template<typename cpu_t> \
 //typename std::enable_if<std::is_arithmetic<cpu_t>::value>::type
@@ -54,6 +56,9 @@
 #define GRAPHICS_SIZE 20
 #endif
 
+#ifdef FLAGS
+#undef FLAGS
+#endif
 #define FLAGS 4
 
 namespace cpu {
@@ -77,8 +82,14 @@ namespace cpu {
 #define NOTHING cpu::MemoryType::NOTHING
 #define POINTER cpu::MemoryType::POINTER
 
-	CPU_T
-		struct OpArgument {
+	struct MemoryTypeData {
+		bool hasSuffix;
+		MemoryTypeData(bool hasSuffix);
+		MemoryTypeData();
+	};
+
+	CPU_TEMPLATE
+	struct OpArgument {
 		MemoryType type;
 		cpu_t val;
 	};
@@ -88,8 +99,8 @@ namespace cpu {
 	//idk about NOTHING type but whatever breh
 	MemoryType fromPrefix(std::string prefix);
 
-	CPU_T
-		struct MemoryTypeRange {
+	CPU_TEMPLATE
+	struct MemoryTypeRange {
 		cpu_t min;
 		cpu_t max;
 	};
@@ -100,16 +111,17 @@ namespace cpu {
 		OpArgCombos(std::vector<MemoryType> left, std::vector<MemoryType> right);
 	};
 
+	extern std::map<MemoryType, MemoryTypeData> memoryTypeData;
 	extern std::map<std::string, int> opMap;
 	extern std::map<std::string, OpArgCombos> opArgs;
 	extern std::map<std::string, std::string> macroMap;
 	extern std::map<MemoryType, MemoryTypeRange<long>> memoryRanges;
 
 	//TODO: add range checks for the different memory types
-	CPU_T
+	CPU_TEMPLATE
 		inline OpArgument<cpu_t> string_to_arg(std::string arg) {
 		if (arg.length() <= 0) return { NOTHING,0 };
-		if (opMap.count(toLower(arg))) return { NOTHING,0 };//throw error cus its not supposed to be an op
+		if (opMap.count(toLower(arg))) return { NOTHING, -1 };//throw error cus its not supposed to be an op
 
 		std::string prefix;
 		cpu_t value;
@@ -122,13 +134,16 @@ namespace cpu {
 		}
 		//printf("prefixOriginal: %s\n", prefix.c_str());
 		MemoryType type = fromPrefix(prefix);
+		MemoryTypeData memData = memoryTypeData.at(type);
 
 		std::string valueZ;
 		for (; i < arg.size(); i++) {
 			valueZ.push_back(arg[i]);
 		}
 
-		if (isInteger(valueZ)) {
+		if (!memData.hasSuffix) {
+			return { type, 0 };
+		}else if (isInteger(valueZ)) {
 			//printf("type: %d, val: %d\n", type, stol(valueZ));
 			return { type, (cpu_t)stol(valueZ) };
 		}
@@ -140,7 +155,7 @@ namespace cpu {
 	}
 
 	//this accepts an entire opcode the other method accepts only single args
-	CPU_T
+	CPU_TEMPLATE
 		inline std::pair<OpArgument<cpu_t>, OpArgument<cpu_t>> str_to_args(std::string str) {
 		std::vector<std::string> parts = splitString(&str, ' ');
 		//std::tuple<std::string, OpArgument, OpArgument> parsedParts;
@@ -152,17 +167,20 @@ namespace cpu {
 		case 3://e.g 'mov r0 1'
 			return { string_to_arg<cpu_t>(parts[1]), string_to_arg<cpu_t>(parts[2]) };
 		default:
+			printf("bad in str_to_args: parts.size() is not 1,2, or 3\n");
 			//ideally throw error here
 			return { { NOTHING,0 }, { NOTHING,0 } };
 		}
 	}
 
-	CPU_T
+	CPU_TEMPLATE
 		inline std::string arg_to_string(OpArgument<cpu_t> arg) {
 		if (arg.type == NOTHING) return std::string("");
 		std::string prefix = getPrefix(arg.type);
 		std::string suffix = std::to_string(arg.val);
-		return prefix + suffix;
+
+		//return prefix + suffix;
+		return ((prefix) + (memoryTypeData.at(arg.type).hasSuffix ? suffix : ""));
 	}
 
 	int str_to_baseOp(std::string str);
@@ -172,7 +190,7 @@ namespace cpu {
 	extern bool init;
 	//bool init = false;
 
-	inline std::pair<const std::string, OpArgCombos> inline toCombo(std::string op, std::vector<MemoryType> left, std::vector<MemoryType> right) {
+	inline std::pair<const std::string, OpArgCombos> toCombo(std::string op, std::vector<MemoryType> left, std::vector<MemoryType> right) {
 		return std::pair<const std::string, OpArgCombos>{op, { left, right }};
 	}
 
@@ -186,17 +204,25 @@ namespace cpu {
 		//auto toCombo = [](std::string op, std::vector<MemoryType> left, std::vector<MemoryType> right)
 		//{return std::pair<const std::string, OpArgCombos>{op, { left, right }}; };
 
+		memoryTypeData.insert({ POINTER, {false} });
+		memoryTypeData.insert({ MEMORY, {false} });
+		memoryTypeData.insert({ NUMBER, {true} });//i think?
+		memoryTypeData.insert({ GRAPHICS, {true} });//idk why this is here tbh we dotn even use it lol
+		memoryTypeData.insert({ REGISTER, {true} });
+		memoryTypeData.insert({ FLAG, {true} });
+		memoryTypeData.insert({ NOTHING, {false} });
+
 		opMap.insert({ "mov",0x00 });
-		opArgs.insert(toCombo("mov", { REGISTER, MEMORY/*,GRAPHICS*/ }, { NUMBER,REGISTER,MEMORY,FLAG/*,GRAPHICS*/ }));
+		opArgs.insert(toCombo("mov", { REGISTER, MEMORY,POINTER }, { NUMBER,REGISTER,MEMORY,FLAG,POINTER }));
 
 		opMap.insert({ "nop",0x37 });
 		opArgs.insert(toCombo("nop", {  }, { }));
 
 		opMap.insert({ "add",0x10 });
-		opArgs.insert(toCombo("add", { REGISTER,MEMORY/*,GRAPHICS*/ }, { NUMBER,REGISTER,MEMORY,FLAG, }));
+		opArgs.insert(toCombo("add", { REGISTER,MEMORY,POINTER }, { NUMBER,REGISTER,MEMORY,FLAG, }));
 
 		opMap.insert({ "sub",0x20 });
-		opArgs.insert(toCombo("sub", { REGISTER,MEMORY/*,GRAPHICS*/ }, { NUMBER,REGISTER,MEMORY,FLAG, }));
+		opArgs.insert(toCombo("sub", { REGISTER,MEMORY,POINTER }, { NUMBER,REGISTER,MEMORY,FLAG, }));
 
 		opMap.insert({ "jmp",0x30 });
 		opArgs.insert(toCombo("jmp", { REGISTER,NUMBER }, { }));
@@ -214,28 +240,30 @@ namespace cpu {
 		opArgs.insert(toCombo("jne", { NUMBER }, { }));
 
 		opMap.insert({ "mul",0x40 });
-		opArgs.insert(toCombo("mul", { REGISTER,MEMORY/*,GRAPHICS*/ }, { NUMBER,REGISTER,MEMORY,FLAG, }));
+		opArgs.insert(toCombo("mul", { REGISTER,MEMORY,POINTER }, { NUMBER,REGISTER,MEMORY,FLAG, }));
 
 		opMap.insert({ "cmp",0x50 });
-		opArgs.insert(toCombo("cmp", { REGISTER,MEMORY/*,GRAPHICS*/ }, { NUMBER,REGISTER,MEMORY,FLAG, }));
+		opArgs.insert(toCombo("cmp", { REGISTER,MEMORY,POINTER }, { NUMBER,REGISTER,MEMORY,FLAG, }));
 
 		opMap.insert({ "or",0x60 });
-		opArgs.insert(toCombo("or", { REGISTER,MEMORY/*,GRAPHICS*/ }, { NUMBER,REGISTER,MEMORY,FLAG, }));
+		opArgs.insert(toCombo("or", { REGISTER,MEMORY,POINTER }, { NUMBER,REGISTER,MEMORY,FLAG, }));
 
 		opMap.insert({ "and",0x70 });
-		opArgs.insert(toCombo("and", { REGISTER,MEMORY/*,GRAPHICS*/ }, { NUMBER,REGISTER,MEMORY,FLAG, }));
+		opArgs.insert(toCombo("and", { REGISTER,MEMORY,POINTER }, { NUMBER,REGISTER,MEMORY,FLAG, }));
 
 		opMap.insert({ "xor",0x80 });
-		opArgs.insert(toCombo("xor", { REGISTER,MEMORY/*,GRAPHICS*/ }, { NUMBER,REGISTER,MEMORY,FLAG, }));
+		opArgs.insert(toCombo("xor", { REGISTER,MEMORY,POINTER }, { NUMBER,REGISTER,MEMORY,FLAG, }));
 
 		opMap.insert({ "not",0x90 });
-		opArgs.insert(toCombo("not", { REGISTER,MEMORY/*,GRAPHICS*/ }, { /*NUMBER,REGISTER,MEMORY,FLAG,*/ }));
+		opArgs.insert(toCombo("not", { REGISTER,MEMORY,POINTER }, { /*NUMBER,REGISTER,MEMORY,FLAG,*/ }));
 
 		opMap.insert({ "shl",0xA0 });
-		opArgs.insert(toCombo("shl", { REGISTER,MEMORY/*,GRAPHICS*/ }, { NUMBER,REGISTER,MEMORY,FLAG, }));
+		opArgs.insert(toCombo("shl", { REGISTER,MEMORY,POINTER }, { NUMBER,REGISTER,MEMORY,FLAG, }));
 
 		opMap.insert({ "shr",0xB0 });
-		opArgs.insert(toCombo("shr", { REGISTER,MEMORY/*,GRAPHICS*/ }, { NUMBER,REGISTER,MEMORY,FLAG, }));
+		opArgs.insert(toCombo("shr", { REGISTER,MEMORY,POINTER }, { NUMBER,REGISTER,MEMORY,FLAG, }));
+
+		//opMap.insert({ "ptr", 0x00 });//this isnt true but we need to register this in the map
 
 		//opMap.insert({ "gmov",0xC0 });
 		//opArgs.insert(toCombo("gmov", { REGISTER,MEMORY,/*GRAPHICS,*/FLAG,NUMBER }, {}));
@@ -246,11 +274,11 @@ namespace cpu {
 		GP = 2
 	};
 
-	CPU_T
+	CPU_TEMPLATE
 		class CpuSimulator {
 		private:
 			cpu_t registers[REGISTER_SIZE];//16 i guess idk
-			cpu_t flags[FLAGS]; //0 = GT, 1 = E, 2 = POINTER
+			cpu_t flags[FLAGS]; //0 = GreaterThan, 1 = Equal, 2 = Pointer
 
 			cpu_t memory[MEMORY_SIZE];//the memory O.o
 			cpu_t mp = 0;//memory pointer
@@ -266,10 +294,12 @@ namespace cpu {
 			std::atomic<bool> interruptz{ false };
 
 			PointerFlags getPointerFlag1() {//TODO: error check here
-				return static_cast<PointerFlags>(flags[2]);
+				PointerFlags result = static_cast<PointerFlags>(flags[2]);
+				return result == 0 ? PointerFlags::MP : result;
 			}
 			PointerFlags getPointerFlag2() {//TODO: error check here
-				return static_cast<PointerFlags>(flags[3]);
+				PointerFlags result = static_cast<PointerFlags>(flags[3]);
+				return result == 0 ? PointerFlags::MP : result;//we need a default or else it will crash like a baws
 			}
 
 			cpu_t* flagToPointer(PointerFlags flag) {
@@ -279,7 +309,7 @@ namespace cpu {
 				case GP:
 					return &gp;
 				}
-				return nullptr;
+				return &mp;
 			}
 
 			cpu_t* flagToMemory(PointerFlags flag) {
@@ -289,7 +319,7 @@ namespace cpu {
 				case GP:
 					return &graphics[0];
 				}
-				return nullptr;
+				return &memory[0];
 			}
 
 			void initMaps() {
@@ -305,7 +335,8 @@ namespace cpu {
 				rangesMap.insert(rangePair{ REGISTER, {0,REGISTER_SIZE - 1} });
 				rangesMap.insert(rangePair{ MEMORY, {0,MEMORY_SIZE - 1} });
 				rangesMap.insert(rangePair{ FLAG, {0,FLAGS - 1} });
-				rangesMap.insert(rangePair{ GRAPHICS, {0,GRAPHICS_SIZE - 1} });//TODO i havent implemented yet
+				rangesMap.insert(rangePair{ POINTER, {0, MEMORY_SIZE - 1} });//TODO i havent implemented yet
+				//rangesMap.insert(rangePair{ GRAPHICS, {0,GRAPHICS_SIZE - 1} });//TODO i havent implemented yet
 
 				bruhMap.insert(bruhRange{ {"jmp", NUMBER}, {0, number} });
 				bruhMap.insert(bruhRange{ {"jgt", NUMBER}, {0, number} });
@@ -314,7 +345,9 @@ namespace cpu {
 				bruhMap.insert(bruhRange{ {"jne", NUMBER}, {0, number} });
 
 				//mov gp 0-number
-				bruhMap2.insert(bruhRange2{ {"mov", GRAPHICS, NUMBER}, {0, number} });
+				bruhMap2.insert(bruhRange2{ {"mov", POINTER, NUMBER}, {0, number} });
+				//bruhMap2.insert(bruhRange2{ {"or", MEMORY, REGISTER}, {0, number} });
+				//bruhMap2.insert(bruhRange2{ {"mov", GRAPHICS, NUMBER}, {0, number} });
 			}
 		public:
 			bool verbose = false;
@@ -333,10 +366,21 @@ namespace cpu {
 				this->interruptz.store(true);
 			}
 
+			void resetInterrupt() {
+				this->interruptz.store(false);
+			}
+
 			void dumpRegisters() {
 				for (cpu_t i = 0; i < REGISTER_SIZE; i++) {
 					printf("r%d: %d\n", i, registers[i]);
 				}
+			}
+
+			void reset() {
+				resetRegisters();
+				resetMemory();
+				resetFlags();
+				resetInterrupt();
 			}
 
 			void resetRegisters() {
@@ -371,10 +415,11 @@ namespace cpu {
 			void dumpPointers() {
 				printf("ip: %d\n", ip);
 				printf("gp: %d\n", gp);
+				printf("mp: %d\n", mp);
 			}
 
 			void dumpMemory(int maxA = MEMORY_SIZE) {
-				const int maxZ = std::max(0, std::min(maxA, MEMORY_SIZE));
+				const int maxZ = between(maxA, 0, MEMORY_SIZE);
 				for (int i = 0; i < maxZ; i++) {
 					printf("m%d: %d\n", i, memory[i]);
 				}
@@ -402,19 +447,20 @@ namespace cpu {
 				return 2 * sizeof(cpu_t) + 1;
 			}
 
-			void runProgram(byte* code, int progLength) {
+			void runProgram(byte* code, int progLength, bool doReset = false) {
 				//dumpRegisters();
-				resetRegisters();
-				resetFlags();
+				if (doReset)reset();
 				if (verbose) {
 					printf("test\n");
 					printf("code[0] = %d\n", code[0]);
 					printf("opSize = %d\n", getOpSize());
 				}
-				for (ip = 0; ip < progLength; ip += getOpSize()) {
+				const cpu_t opsize = getOpSize();
+				for (ip = 0; ip < progLength; ip += opsize) {
+					//printf("ip: %d, proglength: %d, opsize: %d, interrupt: %d\n", ip, progLength, opsize, interruptz.load());
 					if (interruptz.load()) {
-						this->interruptz.store(false);
-						//printf("interrupt\n");
+						interruptz.store(false);
+						//printf("interrupt called and now its: %d\n", interruptz.load());
 						break;
 					}
 					std::vector<byte> op(getOpSize(), 0);
@@ -424,8 +470,14 @@ namespace cpu {
 
 					//if (verbose)printBitArray(code, getOpSize(), 0);
 					executeOp(op);
-					dumpFlags();
+					//dumpFlags();
+					//dumpPointers();printf("\n");
 				}
+			}
+
+			void rangeCheckPointers() {
+				mp = between(mp, 0, MEMORY_SIZE - 1);
+				gp = between(gp, 0, GRAPHICS_SIZE - 1);
 			}
 
 			bool executeOp(cpu_t op, cpu_t left, cpu_t right) {
@@ -437,8 +489,12 @@ namespace cpu {
 				cpu_t* pMemory2 = flagToMemory(pFlag2);
 				cpu_t* pPointer2 = flagToPointer(pFlag2);
 
+				rangeCheckPointers();
+
+				//printf("executed op: %#4X\n", op);
+
 				if (verbose) {
-					printf("executed op:%d, left: %d, right: %d\n", op, left, right);
+					printf("executed op:%#04x, left: %d, right: %d\n", op, left, right);
 					printf("ip: %d\n", ip);
 					//printf("left: "); bin(left); printf("\nright: "); bin(right); printf("\n");
 				}
@@ -451,7 +507,8 @@ namespace cpu {
 					registers[left] = registers[right];
 					break;
 				case 0x02://mov register ValueAtMemory
-					registers[left] = pMemory2[right];
+					registers[left] = pMemory2[(*pPointer2)];
+					if(verbose)printf("mov %d into r%d\n", pMemory2[(*pPointer2)], left);
 					break;
 				case 0x03://mov register ValueAtMemory
 					registers[left] = flags[right];
@@ -462,23 +519,23 @@ namespace cpu {
 
 				case 0x05://mov memory number
 					//memory[left] = right;
-					pMemory1[left] = right;
+					pMemory1[(*pPointer1)] = right;
 					break;
 				case 0x06://mov memory register
 					//memory[left] = registers[right];
-					pMemory1[left] = registers[right];
+					pMemory1[(*pPointer1)] = registers[right];
 					break;
 				case 0x07://mov memory ValueAtMemory
 					//memory[left] = memory[right];
-					pMemory1[left] = pMemory2[right];
+					pMemory1[(*pPointer1)] = pMemory2[(*pPointer2)];
 					break;
 				case 0x08://mov memory flag
 					//memory[left] = flags[right];
-					pMemory1[left] = flags[right];
+					pMemory1[(*pPointer1)] = flags[right];
 					break;
 				case 0x09://mov memory flag
 					//memory[left] = gp;
-					pMemory1[left] = (*pPointer2);
+					pMemory1[(*pPointer1)] = (*pPointer2);
 					break;
 
 				case 0x0A://mov gp number
@@ -491,7 +548,7 @@ namespace cpu {
 					break;
 				case 0x0C://mov gp ValueAtMemory
 					//gp = memory[right];
-					(*pPointer1) = pMemory2[right];
+					(*pPointer1) = pMemory2[(*pPointer2)];
 					break;
 				case 0x0D://mov gp flag
 					//gp = flags[right];
@@ -514,7 +571,7 @@ namespace cpu {
 					registers[left] += registers[right];
 					break;
 				case 0x12://add register valueAtMemory
-					registers[left] += pMemory2[right];
+					registers[left] += pMemory2[(*pPointer2)];
 					break;
 				case 0x13://add register valueAtMemory
 					registers[left] += flags[right];
@@ -522,19 +579,19 @@ namespace cpu {
 
 				case 0x14://add memory number
 					//memory[left] += right;
-					pMemory1[left] += right;
+					pMemory1[(*pPointer1)] += right;
 					break;
 				case 0x15://add memory register
 					//memory[left] += registers[right];
-					pMemory1[left] += registers[right];
+					pMemory1[(*pPointer1)] += registers[right];
 					break;
 				case 0x16://add memory valueAtMemory
 					//memory[left] += memory[right];
-					pMemory1[left] += pMemory2[right];
+					pMemory1[(*pPointer1)] += pMemory2[(*pPointer2)];
 					break;
 				case 0x17://add memory valueAtMemory
 					//memory[left] += flags[right];
-					pMemory1[left] += flags[right];
+					pMemory1[(*pPointer1)] += flags[right];
 					break;
 
 				case 0x18://add memory number
@@ -547,7 +604,7 @@ namespace cpu {
 					break;
 				case 0x1A://add memory valueAtMemory
 					//gp += memory[right];
-					(*pPointer1) += pMemory2[right];
+					(*pPointer1) += pMemory2[(*pPointer2)];
 					break;
 				case 0x1B://add memory valueAtMemory
 					//gp += flags[right];
@@ -564,7 +621,7 @@ namespace cpu {
 					registers[left] -= registers[right];
 					break;
 				case 0x22://sub register valueAtMemory
-					registers[left] -= pMemory2[right];
+					registers[left] -= pMemory2[(*pPointer2)];
 					break;
 				case 0x23://sub register valueAtMemory
 					registers[left] -= flags[right];
@@ -572,19 +629,19 @@ namespace cpu {
 
 				case 0x24://sub memory number
 					//memory[left] -= right;
-					pMemory1[left] -= right;
+					pMemory1[(*pPointer1)] -= right;
 					break;
 				case 0x25://sub memory register
 					//memory[left] -= registers[right];
-					pMemory1[left] -= registers[right];
+					pMemory1[(*pPointer1)] -= registers[right];
 					break;
 				case 0x26://sub memory valueAtMemory
 					//memory[left] -= memory[right];
-					pMemory1[left] -= pMemory2[right];
+					pMemory1[(*pPointer1)] -= pMemory2[(*pPointer2)];
 					break;
 				case 0x27://sub memory valueAtMemory
 					//memory[left] -= flags[right];
-					pMemory1[left] -= flags[right];
+					pMemory1[(*pPointer1)] -= flags[right];
 					break;
 
 				case 0x28://sub gp number
@@ -597,7 +654,7 @@ namespace cpu {
 					break;
 				case 0x2A://sub gp valueAtMemory
 					//gp -= memory[right];
-					(*pPointer1) -= pMemory2[right];
+					(*pPointer1) -= pMemory2[(*pPointer2)];
 					break;
 				case 0x2B://sub gp valueAtMemory
 					//gp -= flags[right];
@@ -639,7 +696,7 @@ namespace cpu {
 					registers[left] *= registers[right];
 					break;
 				case 0x42://multiply register valueAtMemory
-					registers[left] *= pMemory2[right];
+					registers[left] *= pMemory2[(*pPointer2)];
 					break;
 				case 0x43://multiply register valueAtMemory
 					registers[left] *= flags[right];
@@ -647,19 +704,19 @@ namespace cpu {
 
 				case 0x44://multiply memory number
 					//memory[left] *= right;
-					pMemory1[left] *= right;
+					pMemory1[(*pPointer1)] *= right;
 					break;
 				case 0x45://multiply memory register
 					//memory[left] *= registers[right];
-					pMemory1[left] *= registers[right];
+					pMemory1[(*pPointer1)] *= registers[right];
 					break;
 				case 0x46://multiply memory valueAtMemory
 					//memory[left] *= memory[right];
-					pMemory1[left] *= pMemory2[right];
+					pMemory1[(*pPointer1)] *= pMemory2[(*pPointer2)];
 					break;
 				case 0x47://multiply memory valueAtMemory
 					//memory[left] *= flags[right];
-					pMemory1[left] *= flags[right];
+					pMemory1[(*pPointer1)] *= flags[right];
 					break;
 
 				case 0x48://multiply memory number
@@ -672,7 +729,7 @@ namespace cpu {
 					break;
 				case 0x4A://multiply memory valueAtMemory
 					//gp *= memory[right];
-					(*pPointer1) *= pMemory2[right];
+					(*pPointer1) *= pMemory2[(*pPointer2)];
 					break;
 				case 0x4B://multiply memory valueAtMemory
 					//gp *= flags[right];
@@ -690,8 +747,8 @@ namespace cpu {
 					flags[1] = registers[left] == registers[right];
 					break;
 				case 0x52://compare register memory
-					flags[0] = registers[left] > pMemory2[right];
-					flags[1] = registers[left] == pMemory2[right];
+					flags[0] = registers[left] > pMemory2[(*pPointer2)];
+					flags[1] = registers[left] == pMemory2[(*pPointer2)];
 					break;
 				case 0x53://compare register flag
 					flags[0] = registers[left] > flags[right];
@@ -701,26 +758,26 @@ namespace cpu {
 				case 0x54://compare memory number
 					//flags[0] = memory[left] > right;
 					//flags[1] = memory[left] == right;
-					flags[0] = pMemory1[left] > right;
-					flags[1] = pMemory1[left] == right;
+					flags[0] = pMemory1[(*pPointer1)] > right;
+					flags[1] = pMemory1[(*pPointer1)] == right;
 					break;
 				case 0x55://compare memory register
 					//flags[0] = memory[left] > registers[right];
 					//flags[1] = memory[left] == registers[right];
-					flags[0] = pMemory1[left] > registers[right];
-					flags[1] = pMemory1[left] == registers[right];
+					flags[0] = pMemory1[(*pPointer1)] > registers[right];
+					flags[1] = pMemory1[(*pPointer1)] == registers[right];
 					break;
 				case 0x56://compare memory memory
 					//flags[0] = memory[left] > memory[right];
 					//flags[1] = memory[left] == memory[right];
-					flags[0] = pMemory1[left] > pMemory2[right];
-					flags[1] = pMemory1[left] == pMemory2[right];
+					flags[0] = pMemory1[(*pPointer1)] > pMemory2[(*pPointer2)];
+					flags[1] = pMemory1[(*pPointer1)] == pMemory2[(*pPointer2)];
 					break;
 				case 0x57://compare memory flag
 					//flags[0] = memory[left] > flags[right];
 					//flags[1] = memory[left] == flags[right];
-					flags[0] = pMemory1[left] > flags[right];
-					flags[1] = pMemory1[left] == flags[right];
+					flags[0] = pMemory1[(*pPointer1)] > flags[right];
+					flags[1] = pMemory1[(*pPointer1)] == flags[right];
 					break;
 
 				case 0x58://compare memory number
@@ -738,10 +795,11 @@ namespace cpu {
 				case 0x5A://compare memory memory
 					//flags[0] = gp > memory[right];
 					//flags[1] = gp == memory[right];
-					flags[0] = (*pPointer1) > pMemory2[right];
-					flags[1] = (*pPointer1) == pMemory2[right];
+					flags[0] = (*pPointer1) > pMemory2[(*pPointer2)];
+					flags[1] = (*pPointer1) == pMemory2[(*pPointer2)];
 					break;
 				case 0x5B://compare memory flag
+					//TODO: bug where right=-65534
 					//flags[0] = gp > flags[right];
 					//flags[1] = gp == flags[right];
 					flags[0] = (*pPointer1) > flags[right];
@@ -756,7 +814,7 @@ namespace cpu {
 					registers[left] |= registers[right];
 					break;
 				case 0x62://OR register valueAtMemory
-					registers[left] |= pMemory2[right];
+					registers[left] |= pMemory2[(*pPointer2)];
 					break;
 				case 0x63://OR register valueAtMemory
 					registers[left] |= flags[right];
@@ -764,19 +822,19 @@ namespace cpu {
 
 				case 0x64://OR memory number
 					//memory[left] |= right;
-					pMemory1[left] |= right;
+					pMemory1[(*pPointer1)] |= right;
 					break;
 				case 0x65://OR memory register
 					//memory[left] |= registers[right];
-					pMemory1[left] |= registers[right];
+					pMemory1[(*pPointer1)] |= registers[right];
 					break;
 				case 0x66://OR memory valueAtMemory
 					//memory[left] |= memory[right];
-					pMemory1[left] |= pMemory2[right];
+					pMemory1[(*pPointer1)] |= pMemory2[(*pPointer2)];
 					break;
 				case 0x67://OR memory valueAtMemory
 					//memory[left] |= flags[right];
-					pMemory1[left] |= flags[right];
+					pMemory1[(*pPointer1)] |= flags[right];
 					break;
 
 				case 0x68://OR gp number
@@ -789,7 +847,7 @@ namespace cpu {
 					break;
 				case 0x6A://OR gp valueAtMemory
 					//gp |= memory[right];
-					(*pPointer1) |= pMemory2[right];
+					(*pPointer1) |= pMemory2[(*pPointer2)];
 					break;
 				case 0x6B://OR gp valueAtMemory
 					//gp |= flags[right];
@@ -804,7 +862,7 @@ namespace cpu {
 					registers[left] &= registers[right];
 					break;
 				case 0x72://AND register valueAtMemory
-					registers[left] &= pMemory2[right];
+					registers[left] &= pMemory2[(*pPointer2)];
 					break;
 				case 0x73://AND register valueAtMemory
 					registers[left] &= flags[right];
@@ -812,19 +870,19 @@ namespace cpu {
 
 				case 0x74://AND memory number
 					//memory[left] &= right;
-					pMemory1[left] &= right;
+					pMemory1[(*pPointer1)] &= right;
 					break;
 				case 0x75://AND memory register
 					//memory[left] &= registers[right];
-					pMemory1[left] &= registers[right];
+					pMemory1[(*pPointer1)] &= registers[right];
 					break;
 				case 0x76://AND memory valueAtMemory
 					//memory[left] &= memory[right];
-					pMemory1[left] &= pMemory2[right];
+					pMemory1[(*pPointer1)] &= pMemory2[(*pPointer2)];
 					break;
 				case 0x77://AND memory valueAtMemory
 					//memory[left] &= flags[right];
-					pMemory1[left] &= flags[right];
+					pMemory1[(*pPointer1)] &= flags[right];
 					break;
 
 				case 0x78://AND gp number
@@ -837,7 +895,7 @@ namespace cpu {
 					break;
 				case 0x7A://AND gp valueAtMemory
 					//gp &= memory[right];
-					(*pPointer1) &= pMemory2[right];
+					(*pPointer1) &= pMemory2[(*pPointer2)];
 					break;
 				case 0x7B://AND gp valueAtMemory
 					//gp &= flags[right];
@@ -853,26 +911,26 @@ namespace cpu {
 					registers[left] ^= registers[right];
 					break;
 				case 0x82://XOR register valueAtMemory
-					registers[left] ^= pMemory2[right];
+					registers[left] ^= pMemory2[(*pPointer2)];
 					break;
 				case 0x83://XOR register valueAtMemory
 					registers[left] ^= flags[right];
 					break;
 
 				case 0x84://XOR memory number
-					pMemory1[left] ^= right;
+					pMemory1[(*pPointer1)] ^= right;
 					//memory[left] ^= right;
 					break;
 				case 0x85://XOR memory register
-					pMemory1[left] ^= registers[right];
+					pMemory1[(*pPointer1)] ^= registers[right];
 					//memory[left] ^= registers[right];
 					break;
 				case 0x86://XOR memory valueAtMemory
-					pMemory1[left] ^= pMemory2[right];
+					pMemory1[(*pPointer1)] ^= pMemory2[(*pPointer2)];
 					//memory[left] ^= memory[right];
 					break;
 				case 0x87://XOR memory valueAtMemory
-					pMemory1[left] ^= flags[right];
+					pMemory1[(*pPointer1)] ^= flags[right];
 					//memory[left] ^= flags[right];
 					break;
 
@@ -885,7 +943,7 @@ namespace cpu {
 					//gp ^= registers[right];
 					break;
 				case 0x8A://XOR gp valueAtMemory
-					(*pPointer1) ^= pMemory2[right];
+					(*pPointer1) ^= pMemory2[(*pPointer2)];
 					//gp ^= memory[right];
 					break;
 				case 0x8B://XOR gp valueAtMemory
@@ -899,7 +957,7 @@ namespace cpu {
 					registers[left] = ~registers[left];
 					break;
 				case 0x91://NOT memory
-					pMemory1[left] = ~pMemory1[left];
+					pMemory1[(*pPointer1)] = ~pMemory1[(*pPointer1)];
 					//memory[left] = ~memory[left];
 					break;
 				case 0x92://NOT flag
@@ -918,26 +976,26 @@ namespace cpu {
 					registers[left] << registers[right];
 					break;
 				case 0xA2://shiftLeft register valueAtMemory
-					registers[left] << pMemory2[right];
+					registers[left] << pMemory2[(*pPointer2)];
 					break;
 				case 0xA3://shiftLeft register valueAtMemory
 					registers[left] << flags[right];
 					break;
 
 				case 0xA4://shiftLeft memory number
-					pMemory1[left] << right;
+					pMemory1[(*pPointer1)] << right;
 					//memory[left] << right;
 					break;
 				case 0xA5://shiftLeft memory register
-					pMemory1[left] << registers[right];
+					pMemory1[(*pPointer1)] << registers[right];
 					//memory[left] << registers[right];
 					break;
 				case 0xA6://shiftLeft memory valueAtMemory
-					pMemory1[left] << pMemory2[right];
+					pMemory1[(*pPointer1)] << pMemory2[(*pPointer2)];
 					//memory[left] << memory[right];
 					break;
 				case 0xA7://shiftLeft memory valueAtMemory
-					pMemory1[left] << flags[right];
+					pMemory1[(*pPointer1)] << flags[right];
 					//memory[left] << flags[right];
 					break;
 
@@ -950,7 +1008,7 @@ namespace cpu {
 					//gp << registers[right];
 					break;
 				case 0xAA://shiftLeft gp valueAtMemory
-					(*pPointer1) << pMemory2[right];
+					(*pPointer1) << pMemory2[(*pPointer2)];
 					//gp << memory[right];
 					break;
 				case 0xAB://shiftLeft gp valueAtMemory
@@ -966,26 +1024,26 @@ namespace cpu {
 					registers[left] >> registers[right];
 					break;
 				case 0xB2://shiftRight register valueAtMemory
-					registers[left] >> pMemory2[right];
+					registers[left] >> pMemory2[(*pPointer2)];
 					break;
 				case 0xB3://shiftRight register valueAtMemory
 					registers[left] >> flags[right];
 					break;
 
 				case 0xB4://shiftRight memory number
-					pMemory1[left] >> right;
+					pMemory1[(*pPointer1)] >> right;
 					//memory[left] >> right;
 					break;
 				case 0xB5://shiftRight memory register
-					pMemory1[left] >> registers[right];
+					pMemory1[(*pPointer1)] >> registers[right];
 					//memory[left] >> registers[right];
 					break;
 				case 0xB6://shiftRight memory valueAtMemory
-					pMemory1[left] >> pMemory2[right];
+					pMemory1[(*pPointer1)] >> pMemory2[(*pPointer2)];
 					//memory[left] >> memory[right];
 					break;
 				case 0xB7://shiftRight memory valueAtMemory
-					pMemory1[left] >> flags[right];
+					pMemory1[(*pPointer1)] >> flags[right];
 					//memory[left] >> flags[right];
 					break;
 
@@ -998,7 +1056,7 @@ namespace cpu {
 					//gp >> registers[right];
 					break;
 				case 0xBA://shiftRight gp valueAtMemory
-					(*pPointer1) >> pMemory2[right];
+					(*pPointer1) >> pMemory2[(*pPointer2)];
 					//gp >> memory[right];
 					break;
 				case 0xBB://shiftRight gp valueAtMemory
@@ -1035,7 +1093,9 @@ namespace cpu {
 			//and make sure its greater than zero
 			//ill look back at this and not understand a single word of it
 			cpu_t jmp_range_check(cpu_t left) {
-				return max(0, getOpSize() * ((int)((float)left / (float)getOpSize())));
+				if (left > 9999 || left < -9999)throw 20;//idk if this works
+				//TODO: dont let this get greater than program length which it currently does
+				return std::max(0, getOpSize() * ((int)((float)left / (float)getOpSize())));
 			}
 
 			bool executeOp(std::vector<byte> code) {
@@ -1076,12 +1136,12 @@ namespace cpu {
 			int assemble(byte* program, const char str[], int strLengthA) {
 				const int strLength = strLengthA + 1;
 				std::map<std::string, int> labels;
-				cpu_t currentOp[3];//ops can only be 3 max lolll
+				cpu_t currentOp[3] = {0,0,0};//ops can only be 3 max lolll
 				std::string identifier("");
 				int programI = 0;
 				int opI = 0;
-				MemoryType left;
-				MemoryType right;
+				MemoryType left = NOTHING;
+				MemoryType right = NOTHING;
 
 				bool isLabel = false;
 				bool preParse = true;
@@ -1150,7 +1210,7 @@ namespace cpu {
 								//currentOp[opI] = labels.at(identifier);
 								identifier = std::to_string(labels.at(identifier));
 								if (verbose)printf("replaced label with %s\n", identifier.c_str());
-								currentOp[opI] = atoi(identifier.c_str());
+								currentOp[opI] = (cpu_t)atoi(identifier.c_str());
 								if (opI == 1) {
 									left = NUMBER;
 								}
@@ -1164,7 +1224,7 @@ namespace cpu {
 							}
 						}
 						else if (identifier[0] == 'r' && opI != 0) {//tis but a register
-							currentOp[opI] = atoi(identifier.substr(1, identifier.size() - 1).c_str());//ecks dee
+							currentOp[opI] = (cpu_t)atoi(identifier.substr(1, identifier.size() - 1).c_str());//ecks dee
 							if (verbose)printf("%s -> register %d\n", identifier.c_str(), currentOp[opI]);
 							if (opI == 1) {
 								left = REGISTER;
@@ -1175,7 +1235,7 @@ namespace cpu {
 
 						}
 						else if (identifier[0] == 'f' && opI != 0) {//tis but a flag
-							currentOp[opI] = atoi(identifier.substr(1, identifier.size() - 1).c_str());//ecks dee
+							currentOp[opI] = (cpu_t)atoi(identifier.substr(1, identifier.size() - 1).c_str());//ecks dee
 							if (verbose)printf("%s -> flag %d\n", identifier.c_str(), currentOp[opI]);
 							if (opI == 1) {
 								left = FLAG;
@@ -1217,7 +1277,7 @@ namespace cpu {
 								return 0;
 							}
 							else {
-								currentOp[opI] = num;
+								currentOp[opI] = (cpu_t)num;
 								if (verbose)printf("first parse currentOp[%d] = %d\n", opI, num);
 								if (opI == 1) {
 									left = NUMBER;
@@ -1264,7 +1324,7 @@ namespace cpu {
 							//TODO: potential bug
 							if (!preParse || true) {
 								try {
-									currentOp[0] = str_to_baseOp(identifier.c_str());
+									currentOp[0] = (cpu_t)str_to_baseOp(identifier.c_str());
 									if (currentOp[0] == opMap.at("nop")) {
 										if (verbose)printf("actually a nop\n");
 										if (!preParse)addToProgram(program, currentOp, programI);
@@ -1308,7 +1368,7 @@ namespace cpu {
 										return 0;
 									}
 									else {
-										currentOp[opI] = num;
+										currentOp[opI] = (cpu_t)num;
 										if (currentOp[0] == 0x30 && left == REGISTER)
 											currentOp[0] = 0x36;
 										if (verbose)printf("numeber machine go %d brrrrrrrr\n", num);
@@ -1363,7 +1423,7 @@ namespace cpu {
 								}
 								else {
 									if (verbose)printf("offset: %d, left: %d, right: %d\n", offset, left, right);
-									currentOp[0] += offset;
+									currentOp[0] += (cpu_t)offset;
 									if (!preParse)addToProgram(program, currentOp, programI);
 
 									programI += getOpSize();
@@ -1406,19 +1466,19 @@ namespace cpu {
 				return programI;
 			}
 
-			const static int maskByte = 0b11111111;
+			const static int maskByte = 255;
 
 			void addToProgram(byte* program, cpu_t* op, int index) {
-				if (verbose) {
-					printf("added to program op ");
-					bin(op[0]); printf(" "); bin(op[1]); printf(" ");  bin(op[2]);
+				if(1==2) {
+					printf("added to program %d %d %d| ", op[0], op[1], op[2]);
+					printf("op: ");  bin(op[0]); printf(", arg1: "); bin(op[1]); printf(", arg2: ");  bin(op[2]);
 					printf("\n");
 				}
 
 				char bytes = (getOpSize() - 1) / 2;
 				if (verbose)printf("bytes: %d\n", bytes);
 
-				program[index] = op[0];//this is probably already correct
+				program[index] = op[0];//this is probably already correct //im scared now thats its not 'probably correct'
 
 				//gotta split the op[1] and op[2] into bytes
 				for (int byte = 0; byte < bytes; byte++) {
@@ -1427,9 +1487,9 @@ namespace cpu {
 					auto a = op[1] >> (byte * 8);//get it into position for maskng
 					auto b = a & maskByte;//mask only 1 byte
 					auto c = b >> (byte * 8);//return it bac
-					if (verbose) {
-						printf("op[1] a: "); bin(a); printf(" b: "); bin(b); printf(" c: "); bin(c); printf("\n");
-					}
+					//if (verbose) {
+					//	printf("op[1] a: "); bin(a); printf(" b: "); bin(b); printf(" c: "); bin(c); printf("\n");
+					//}
 					program[index + 1 + byte] = b;
 				}
 
@@ -1438,88 +1498,25 @@ namespace cpu {
 					auto a = op[2] >> (byte * 8);
 					auto b = a & maskByte;
 					auto c = b >> (byte * 8);
-					if (verbose) {
-						printf("op[2] a: "); bin(a); printf(" b: "); bin(b); printf(" c: "); bin(c); printf("\n");
-					}
+					//if (verbose) {
+					//	printf("op[2] a: "); bin(a); printf(" b: "); bin(b); printf(" c: "); bin(c); printf("\n");
+					//}
 					program[index + bytes + byte + 1] = b;
 				}
+				//reset it to zero i guess for next op
+				op[0] = 0;
+				op[1] = 0;
+				op[2] = 0;
+
 				if (verbose)printBitArray(program, getOpSize(), index);
 			}
 
+	// 		void dumpHex(byte* program) {
+				
+	// /*			for () {
+
+	// 			}*/
+	// 		}
+
 	};
-
-	inline void initMaps_IMP() {
-		if (init)return;
-		init = true;
-
-		//i now realize that i could have just made a typedef but i am too lazy to fix it and this works fine
-		//naw i think this is better anyways
-		auto toCombo = [](std::string op, std::vector<MemoryType> left, std::vector<MemoryType> right)
-		{return std::pair<const std::string, OpArgCombos>{op, { left, right }}; };
-
-		typedef int bruh;
-
-		opMap.insert({ "mov",0x00 });
-		opArgs.insert(toCombo("mov", { REGISTER, MEMORY/*,GRAPHICS*/ }, { NUMBER,REGISTER,MEMORY,FLAG/*,GRAPHICS*/ }));
-
-		opMap.insert({ "nop",0x37 });
-		opArgs.insert(toCombo("nop", {  }, { }));
-
-		opMap.insert({ "add",0x10 });
-		opArgs.insert(toCombo("add", { REGISTER,MEMORY/*,GRAPHICS*/ }, { NUMBER,REGISTER,MEMORY,FLAG, }));
-
-		opMap.insert({ "sub",0x20 });
-		opArgs.insert(toCombo("sub", { REGISTER,MEMORY/*,GRAPHICS*/ }, { NUMBER,REGISTER,MEMORY,FLAG, }));
-
-		opMap.insert({ "jmp",0x30 });
-		opArgs.insert(toCombo("jmp", { REGISTER,NUMBER }, { }));
-
-		opMap.insert({ "jgt",0x31 });
-		opArgs.insert(toCombo("jgt", { NUMBER }, { }));
-
-		opMap.insert({ "jngt",0x32 });
-		opArgs.insert(toCombo("jngt", { NUMBER }, { }));
-
-		opMap.insert({ "je",0x33 });
-		opArgs.insert(toCombo("je", { NUMBER }, { }));
-
-		opMap.insert({ "jne",0x34 });
-		opArgs.insert(toCombo("jne", { NUMBER }, { }));
-
-		opMap.insert({ "mul",0x40 });
-		opArgs.insert(toCombo("mul", { REGISTER,MEMORY/*,GRAPHICS*/ }, { NUMBER,REGISTER,MEMORY,FLAG, }));
-
-		opMap.insert({ "cmp",0x50 });
-		opArgs.insert(toCombo("cmp", { REGISTER,MEMORY/*,GRAPHICS*/ }, { NUMBER,REGISTER,MEMORY,FLAG, }));
-
-		opMap.insert({ "or",0x60 });
-		opArgs.insert(toCombo("or", { REGISTER,MEMORY/*,GRAPHICS*/ }, { NUMBER,REGISTER,MEMORY,FLAG, }));
-
-		opMap.insert({ "and",0x70 });
-		opArgs.insert(toCombo("and", { REGISTER,MEMORY/*,GRAPHICS*/ }, { NUMBER,REGISTER,MEMORY,FLAG, }));
-
-		opMap.insert({ "xor",0x80 });
-		opArgs.insert(toCombo("xor", { REGISTER,MEMORY/*,GRAPHICS*/ }, { NUMBER,REGISTER,MEMORY,FLAG, }));
-
-		opMap.insert({ "not",0x90 });
-		opArgs.insert(toCombo("not", { REGISTER,MEMORY/*,GRAPHICS*/ }, { /*NUMBER,REGISTER,MEMORY,FLAG,*/ }));
-
-		opMap.insert({ "shl",0xA0 });
-		opArgs.insert(toCombo("shl", { REGISTER,MEMORY/*,GRAPHICS*/ }, { NUMBER,REGISTER,MEMORY,FLAG, }));
-
-		opMap.insert({ "shr",0xB0 });
-		opArgs.insert(toCombo("shr", { REGISTER,MEMORY/*,GRAPHICS*/ }, { NUMBER,REGISTER,MEMORY,FLAG, }));
-
-		//opMap.insert({ "gmov",0xC0 });
-		//opArgs.insert(toCombo("gmov", { REGISTER,MEMORY,/*GRAPHICS,*/FLAG,NUMBER }, {}));
-	}
-
 }
-
-
-
-//TODO: add range checks for the different memory types
-
-
-
-//#endif

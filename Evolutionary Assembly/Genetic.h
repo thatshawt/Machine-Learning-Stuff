@@ -1,4 +1,9 @@
 #pragma once
+
+#ifndef MAX_PROGLENGTH
+#define MAX_PROGLENGTH 0xFFFF
+#endif
+
 //#ifndef GENETIC_H
 //#define GENETIC_H
 
@@ -6,14 +11,28 @@
 #define DNA_T template <class dna_t>
 
 //#include "Cpu2.h"
-#include "CpuThreading.cpp"
+#include <CpuThreading.h>
 //#include <algorithm>
 #include <cstdarg>
 #include <assert.h>
+////////////////
 
 using namespace std;//bruh ew get those stds out of here
 using namespace cpu;
-//TODO: remove the stds because we want clean code only ok bois
+//TODO: cure cancer
+
+/*
+list of bruh moments:
+or mem r-40
+or ptr r-8
+or r12 r-1
+add r6 f-29
+or mem r-8
+add ptr r-5
+and mem r-10
+and ptr r-10
+or mem r-66
+*/
 
 typedef vector<string> dna_t;//yooooo letsss gooooo, lol stds
 
@@ -53,6 +72,11 @@ namespace gene {
 				dna.push_back(dnaa);
 			}
 
+			//TEST TO SEE IF COST IS WORKING
+			//dna_t solutionDna = {"\nmov f2 1", "\nmov f3 1", "\nmov ptr 0", "\nmov r0 mem"};
+			//dna[0] = solutionDna;
+			//printf("solutionDna: '%s'\n", combine((vector<string>)solutionDna).c_str());
+
 			assert(dna.size() == maxSpecies);
 
 			for (int gen = 0; gen < generations; gen++) {
@@ -60,37 +84,38 @@ namespace gene {
 				vector<costInfo> costs(maxSpecies, { 0,0 });
 				for (int species = 0; species < maxSpecies; species++) {
 					log("Species_Start: %d\n", species);
+					printf("'%s'\n", combine((vector<string>)dna[species]).c_str());
 					//printf("Code:%s\n\n", combine(dna[species]).c_str());
 					double cost = 0;
 					applyDna(dna[species]);
+					//if (species == 0) {
+					//	printf("solutionDna: '%s'\n", combine((vector<string>)dna[species]).c_str());
+					//}
 					//log("applied dna\n");
 					for (int i = 0; i < x.size(); i++) {
-						log("Apply input: %d, Input: %s\n",
-									i, array_to_string<int>(&x[i][0], x[i].size()).c_str());
+						//log("Apply input: %d, Input: %s\n", i, array_to_string<int>(&x[i][0], x[i].size()).c_str());
 						applyInput(&x[i]);
 						//log("applied input\n");
 
 						//printf("i: %d\n", i);
 						auto expected = y[i];
-						log("expected: %s\n", array_to_string(&expected[0], expected.size()).c_str());
+						//log("expected: %s\n", array_to_string(&expected[0], expected.size()).c_str());
 						
 						auto result = getResult(&x[i]);
-						log("result: %s\n", array_to_string(&result[0], result.size()).c_str());
+						//log("result: %s\n", array_to_string(&result[0], result.size()).c_str());
 
 						this->cost(&cost, expected, result);
 						log("calculated cost: %f\n\n", cost);
 					}
+					double preCost = cost;
+
 					postIterateCost(&cost, x);
+
 					costs[species].species = species;
 					costs[species].cost = cost;
 					//totalCost += cost;
 					//printf("Species_End: %d cost: %f\n\n", species, cost);
 
-					if (cost <= 0.01) {
-						printf("you win baws\n");
-						printf("prog length: %d, '%s'\n", bestDna.size(), combine((vector<string>)bestDna).c_str());
-						return;
-					}
 				}
 				std::sort(costs.begin(), costs.end(), compare);
 
@@ -101,6 +126,11 @@ namespace gene {
 
 				if (gen == generations - 1)
 					bestDna = dna[costs[0].species];
+
+				if (lowestCost <= 0.01 && bestDna.size() != 0) {
+					printf("prog length: %d, '%s'\n", ((vector<string>)bestDna).size(), combine((vector<string>)bestDna).c_str());
+					return;
+				}
 			}
 		}
 
@@ -120,28 +150,7 @@ namespace gene {
 		//static void print_array(type data, int length, char separator);
 	};
 
-	//TODO: work this out cus i want to make some pie chart thing where every action has a chance to happen idk
-	//cus rn i check them in order but i want to just pick one at random.
-	//im thinking of doing some pie chart thing with the actions and just choose one at random
-	/*enum GeneticAssemblyParamsENUM_TIME_BRUH {
-		TOURNAMENT_K,
-
-		MUTATE_PERCENT,
-		MUTATE_RANGE,
-		MUTATE_LEFT_THRESHOLD,
-		MUTATE_OP_THRESHOLD,
-		MUTATE_RIGHT_TYPE,
-		MUTATE_LEFT_TYPE,
-		MUTATE_NEW_OP_CHANCE,
-
-		CROSSOVER_PERCENT,
-
-		NEW_DNA,
-		DELETE_DNA
-	};*/
-
 	struct GeneticAssemblyParams {
-		//idk why im tired i slept like more than 12 hours rip
 		int tournamentK = 3;
 
 		float mutatePercent = 0.3f;
@@ -150,58 +159,80 @@ namespace gene {
 		float mutateOpThreshold = 0.2f;
 		float mutateRightType = 0.1f;
 		float mutateLeftType = 0.1f;
-		float mutateNewOpChance = 0.05f;
+		float mutateNewOpChance = 0.5f;
+		float mutateDeleteOpChance = 0.05f;
 
 		float crossOverPercent = 0.3f;
+		int crossOverMax = 10;
+		int crossOverMin = 1;
 
 		float newDnaChance = 0.9f;//this makes the randomDna return longer dna strands
+		float deleteDnaChance = 0.1f;//TODO: implement this
+
+		int maxProgTime = 1;//max amount of time a program can last in milliseconds
 	};
 
-	//https://stackoverflow.com/questions/14294267/class-template-for-numeric-types
 	//ill learn this stuff eventually bruv dont worry atleast im giving credit
-		CPU_T
+		CPU_TEMPLATE
 		class GeneticAssemblyRatz : public GeneticAlgorithm<dna_t> {
 		public:
 			GeneticAssemblyParams params;
 
 			GeneticAssemblyRatz(cpu::CpuSimulator<cpu_t>* cpu) {
 				this->cpu = cpu;
-				program = new vector<unsigned char>(maxProgLength, (unsigned char)0);
+				progTrashEdition = vector<unsigned char>(MAX_PROGLENGTH, (unsigned char)0);
+				program = &progTrashEdition;
+				//this->program = &progTrashEdition;
 				//this->cpuThread = cpu::CpuRunProgramThread<cpu_t>(cpu);
 				//printf("cpuThread in genetic: %p\n", &(this->cpuThread));
 			}
-
+			
 			dna_t getRandomSingleDna() {
 				dna_t dna;
 				string op = getRandomOp();
 				OpArgument<cpu_t> left = getRandomLeft(op);
 				OpArgument<cpu_t> right = getRandomRight(op, left.type);
-				string leftString = (left.type == NOTHING ? "" : getPrefix(left.type) + to_string(left.val));
-				string rightString = (right.type == NOTHING ? "" : getPrefix(right.type) + to_string(right.val));
-				dna.push_back("\n" + op + " " + leftString + " " + rightString);
+				dna.push_back("\n" + op + " " + arg_to_string(left) + " " + arg_to_string(right));
 				return dna;
 			}
 
 			void mutateOpArgValLeft(string op, cpu::OpArgument<cpu_t>* left) {
 				MemoryType argType = left->type;
-				MemoryTypeRange range = (*cpu).bruhMap.count({ op,argType }) ? (*cpu).bruhMap.at({ op,argType }) : (*cpu).rangesMap.at(argType);
+				MemoryTypeRange<cpu_t> range = (*cpu).bruhMap.count({ op,argType }) ? (*cpu).bruhMap.at({ op,argType }) : (*cpu).rangesMap.at(argType);
 
 				//this is fugly and probably doesnt work lets gooooooooo
-				cpu_t min = range.min > left->val - params.mutateRange ? range.min : left->val - params.mutateRange;
-				cpu_t max = range.max < params.mutateRange + left->val ? range.max : params.mutateRange + left->val;
+				//cpu_t min = range.min > left->val - params.mutateRange ? range.min : left->val - params.mutateRange;
+				//cpu_t max = range.max < params.mutateRange + left->val ? range.max : params.mutateRange + left->val;
 
-				left->val = (int)drand((long long)max - (long long)min + 1) + (long long)min;
+				cpu_t rangeStart = left->val - params.mutateRange;
+				cpu_t rangeEnd = left->val + params.mutateRange;
+
+				cpu_t _min = std::max(range.min, rangeStart);
+				cpu_t _max = std::min(range.max, rangeEnd);
+
+				left->val = (drand() * (_max - _min)) + _min;
+
+				//left->val = (int)drand((long long)max - (long long)min + 1) + (long long)min;
 			}
 
 			void mutateOpArgValRight(string op, cpu::OpArgument<cpu_t>* left, cpu::OpArgument<cpu_t>* right) {
 				MemoryType argType = right->type;
-				MemoryTypeRange range = (*cpu).bruhMap2.count({ op, left->type, argType }) ? (*cpu).bruhMap2.at({ op, left->type, argType }) : (*cpu).rangesMap.at(argType);
+				MemoryTypeRange<cpu_t> range = (*cpu).bruhMap2.count({ op, left->type, argType }) ? (*cpu).bruhMap2.at({ op, left->type, argType }) : (*cpu).rangesMap.at(argType);
 
-				//this is fugly and probably doesnt work lets gooooooooo
-				cpu_t min = range.min >= ((long long)right->val - (long long)params.mutateRange) ? range.min : right->val - params.mutateRange;
-				cpu_t max = range.max <= ((long long)params.mutateRange + (long long)right->val) ? range.max : params.mutateRange + right->val;
+				////this is fugly and probably doesnt work lets gooooooooo
+				//cpu_t min = range.min >= ((long long)right->val - (long long)params.mutateRange) ? range.min : right->val - params.mutateRange;
+				//cpu_t max = range.max <= ((long long)params.mutateRange + (long long)right->val) ? range.max : params.mutateRange + right->val;
 
-				right->val = (int)drand((long long)max - (long long)min + 1) + (long long)min;
+				cpu_t rangeStart = right->val - params.mutateRange;
+				cpu_t rangeEnd = right->val + params.mutateRange;
+
+				cpu_t _min = std::max(range.min, rangeStart);
+				cpu_t _max = std::min(range.max, rangeEnd);
+
+				right->val = (drand() * (_max - _min)) + _min;
+
+				//right->val = (int)drand((long long)max - (long long)min + 1) + (long long)min;
+				//right->val = between(range.min, range.max, params.mutateRange+right->val);
 			}
 
 			//TODO: test this to see if it needs improvements
@@ -233,32 +264,32 @@ namespace gene {
 						|| smaller->at(i).second.type != bigger->at(i).second.type)sum++;
 				}
 
-				//i chose 2.7 cus i think thats around the average op size
-				sum += (double)2.7 * (double)((bigger->size()) - (smaller->size()));
+				double opAverageLength = 2.7;//TODO: calculate this?
+				sum += opAverageLength * (double)((bigger->size()) - (smaller->size()));
 				return sum;
 			}
 
 		protected:
 			const int maxProgLength = 0xFFFF;     //why not idk man
 			int progLength = 0;
+			vector<unsigned char> progTrashEdition;
 			vector<unsigned char>* program;
 			cpu::CpuSimulator<cpu_t>* cpu;
-			cpu::CpuRunProgramThread<cpu_t> cpuThread = cpu::CpuRunProgramThread<cpu_t>(&cpu);
+			// cpu::CpuRunProgramThread<cpu_t> cpuThread = cpu::CpuRunProgramThread<cpu_t>(&cpu);
+			cpu::CpuRunProgramThread<cpu_t> cpuThread { &cpu };
+
 			vector<int> getResult(vector<int>* inputs) {
 				//printf("getresult start, proglength: %d\n", progLength);
-				applyInput(inputs);
-				//printf("apllied inputs\n");
-				cpu->resetRegisters();
-				//printf("reset registers from main thread\n");
-				//printf("main thread id: %d\n", std::this_thread::get_id());
+				applyInput(inputs);//idk mannnn
 				cpuThread.runProgram(&program->at(0), progLength);
-				if (!cpuThread.sleepUntilComplete(10))printf("took too long");
+				if (!cpuThread.sleepUntilComplete(params.maxProgTime))log("took too long\n");
+
+				//cpu->dumpRegisters();
 
 				//printf("ran program\n");
 				vector<int> registers;
 				for (int i = 0; i < 16; i++) {
 					registers.push_back(cpu->getRegister(i));
-					//printf("added register thing\n");
 				}
 				//printf("getresult finish\n");
 				return registers;
@@ -272,6 +303,7 @@ namespace gene {
 				}
 				*currentCost = cost;
 			}
+
 			void postIterateCost(double* currentCost, vector<vector<int>> x) {
 				*currentCost = (*currentCost) / ((double)x.size());
 			}
@@ -299,54 +331,36 @@ namespace gene {
 					population.erase(pBegin + k);
 				}
 
-				//for (int k = 0; k < params.tournamentK; k++) {
-				//	int pick = irand(init.size());
-				//	bool found = false;
-				//	auto findFn = [&](pair<dna_t, int> val) {
-				//		if (val.second == pick)
-				//			found = true;
-				//	};
-				//	for_each(population.begin(), population.end(), findFn);
-				//	if (found) {
-				//		printf("pick: %d, init size: %d\n", pick, init.size());
-				//		k--;
-				//		continue;
-				//	}
+				for (int i = 0; i < (population.size()); i++) { //iterating throuch the list of programs
+					pair<dna_t, int>* currentDnaPtr = &population[i];
+					dna_t* realDnaPtr = &((*dna)[currentDnaPtr->second]);
 
-				//	printf("pick: %d, init size: %d\n", pick, (int)init.size());
-				//	//init.erase(init.begin() + pick);
-				//	population.erase(population.begin() + pick);
-				//	//population.push_back({ dna->at(pick), pick });
-				//	//for (int i = 0; i < population.size(); i++) {
-				//	//	int *index = &(population[i].second);
-				//	//	if (*index >= pick-1) (*index)--;
-				//	//}
-				//}
-
-				//sort(costs);
-				//for () {
-
-				//}
-
-
-				//mutate possibilities
-				//-change op into another instruction
-				//-change one of params into one of the possibilites defined in some array idk
-				//-delete an op
-				//-create new op with random params
-				//-do numerical operation on one of params
-				//
-				//params:
-				//	mutatePercent:			how likely an opcode is to undergo mutation
-				for (int i = 0; i < (population.size()); i++) {//iterating throuch the list of programs
-					dna_t currentDna = population[i].first;
-					if (frand(1) <= params.mutateNewOpChance) {//add new code to program
-						currentDna.push_back(getRandomSingleDna()[0]);
-					}
-					for (int j = 0; j < currentDna.size()-1; j++) {//iterating inside a singular program
+					for (int j = 0; j < /*currentDna.size()*/realDnaPtr->size()-1; j++) { //iterating inside a singular program
+						
+						//dna_t currentDna = currentDnaPtr->first;
 						if (frand(1) <= params.mutatePercent) {
+							if (frand(1) <= params.mutateNewOpChance) {//add new code to program
+								//currentDna.insert(currentDna.begin() + j, getRandomSingleDna()[0]);
+								realDnaPtr->insert(realDnaPtr->begin() + j, getRandomSingleDna()[0]);
+								j--;
+								//printf("added one\n");
+								continue;
+							}
+							if (frand(1) <= params.mutateDeleteOpChance) {
+								//currentDna.erase(currentDna.begin() + j);
+								realDnaPtr->erase(realDnaPtr->begin() + j);
+								j++;
+								//printf("erased one\n");
+								continue;
+							}
+
+							log("mutate species %d:\n", population[i].second);
 							//printf("mutate start\n");
-							vector<string> split = splitString(&currentDna[j], ' ');
+							vector<string> split = splitString(&realDnaPtr->at(j), ' ');
+							//vector<string> split = splitString(&currentDna[j], ' ');
+							for (int z = 0; z < split.size();z++) {
+								split[z] = removeSpace(split[z]);
+							}
 							string op = "";
 							OpArgument<cpu_t> leftArg;
 							OpArgument<cpu_t> rightArg;
@@ -354,17 +368,18 @@ namespace gene {
 							bool rightInit = false;
 							switch (split.size()) {
 							case 0:
+								printf("WARNING in Genetic.h: split size was zero\n");
 								break;//lol wat
 							case 1:
 								op = split[0];
-								leftArg = { NOTHING, 0 };
-								rightArg = { NOTHING, 0 };
+								leftArg = { NOTHING, -1 };
+								rightArg = { NOTHING, -1 };
 								break;
 							case 2:
 								op = split[0];
 								leftInit = true;
 								leftArg = string_to_arg<cpu_t>(split[1]);
-								rightArg = { NOTHING, 0 };
+								rightArg = { NOTHING, -1 };
 								break;
 							case 3:
 								op = split[0];
@@ -377,14 +392,19 @@ namespace gene {
 
 							string mutatedDna;
 
+							if (frand(1) <= params.mutateOpThreshold) {
+								realDnaPtr->at(j) = getRandomSingleDna()[0];
+								//currentDna[j] = getRandomSingleDna()[0];
+								mutatedDna = realDnaPtr->at(j);
+								//mutatedDna = currentDna[j];
+								log("MUT_OP\n");
+								goto writeOp;
+							}
+
+							//printf("op: '%s',",op.c_str());
 							if (leftInit && frand(1) <= params.mutateLeftThreshold) {
-								if (frand(1) <= params.mutateOpThreshold) {
-									currentDna[j] = getRandomSingleDna()[0];
-									mutatedDna = currentDna[j];
-									log("MUT_OP\n");
-									goto writeOp;
-								}
-								if (frand(1) <= params.mutateLeftType) {
+								//printf("mutate op: '%s'\n", op.c_str());
+								if (leftInit && frand(1) <= params.mutateLeftType) {
 									leftArg.type = getRandomLeftType(op);
 									log("MUT_LEFT_TYPE\n");
 								}
@@ -402,11 +422,44 @@ namespace gene {
 								log("MUT_RIGHT_VAL\n");
 							}
 
+							log("op: %s, leftArg: %d, rightArg: %d\n", op.c_str(),
+											static_cast<int>(leftArg.type), static_cast<int>(rightArg.type));
 							mutatedDna = "\n" + op + " " + arg_to_string(leftArg) + " " + arg_to_string(rightArg);
 						writeOp:
 							//printf("dna size: %d, j: %d\n", (*dna)[population[i].second].size(), j);
 
-							(*dna)[population[i].second][j] = mutatedDna;
+							realDnaPtr->at(j) = mutatedDna;
+							//(*dna)[population[i].second][j] = mutatedDna;
+							log("writeOp\n");
+						}
+					}
+
+				}
+				
+				//TODO: implement the ability to use crossOver parameters from params variable
+				for (int i = 0; i < (population.size()); i++) { //crossover baby
+					if (frand(1) <= params.crossOverPercent) {
+						pair<dna_t, int>* currentDna = &population[i];
+						dna_t* realCurrentDna = &((*dna)[currentDna->second]);
+
+						pair<dna_t, int>* selectedDna = &population[irand(population.size() - 1)];
+						dna_t* realSelectedDna = &((*dna)[selectedDna->second]);
+
+						const int minProgSize = min(realSelectedDna->size(), realCurrentDna->size());
+						const int startPoint = irand(minProgSize - 1);
+						const int endPoint = irand(minProgSize-startPoint)+startPoint;
+
+						//const int maxLines = min(currentDna->size(), min(params.crossOverMax, selectedDna->size()));
+						//const int minLines = min(maxLines, params.cross);
+
+						////select random starting point
+						//const int lines = irand(maxLines-minLines)+minLines;
+
+						//we are going to continue until we have either reached the end or reached max lines
+						for (int j = startPoint; j < endPoint; j++) {
+							std::string temp = std::string((*realCurrentDna)[j]);
+							realCurrentDna->at(j) = (*realSelectedDna)[j];
+							realSelectedDna->at(j) = temp;
 						}
 					}
 				}
@@ -417,6 +470,7 @@ namespace gene {
 				//	crossoverPercent:       how liekly crossover is to happen
 				//	crossoverLengthMax:     maximum lines to get switched
 				//	crossoverLengthMin:     minimum lines to get switched
+
 			}
 
 			random_selector<> selector{};
@@ -439,19 +493,22 @@ namespace gene {
 			}
 
 			cpu::OpArgument<cpu_t> getRandomLeft(string op) {
-				OpArgCombos opArgsCombo = opArgs.at(removeSpace(op));
+				const std::string strippedOp = removeSpace(op);
+				OpArgCombos opArgsCombo = opArgs.at(strippedOp);
 				vector<MemoryType>* possibleArgs = &opArgsCombo.left;
 
 				if (possibleArgs->size() <= 0)return { NOTHING, 0 };
 
 				MemoryType argType = *selector(possibleArgs->begin(), possibleArgs->end());
-				MemoryTypeRange range = (*cpu).bruhMap.count({ removeSpace(op),argType }) ? (*cpu).bruhMap.at({ removeSpace(op),argType }) : (*cpu).rangesMap.at(argType);
+				//printf("op: %s, memType: %d\n", op.c_str(), static_cast<int>(argType));
+				MemoryTypeRange<cpu_t> range = (*cpu).bruhMap.count({ strippedOp,argType }) ? (*cpu).bruhMap.at({ strippedOp,argType }) : (*cpu).rangesMap.at(argType);
 
 				return { argType, (cpu_t)drand(range.max - range.min + 1) + range.min };
 			}
 
 			cpu::MemoryType getRandomLeftType(string op) {
-				OpArgCombos opArgsCombo = opArgs.at(removeSpace(op));
+				const std::string strippedOp = removeSpace(op);
+				OpArgCombos opArgsCombo = opArgs.at(strippedOp);
 				vector<MemoryType>* possibleArgs = &opArgsCombo.left;
 
 				if (possibleArgs->size() <= 0)return NOTHING;
@@ -462,19 +519,20 @@ namespace gene {
 			}
 
 			cpu::OpArgument<cpu_t> getRandomRight(string op, cpu::MemoryType left) {
-				OpArgCombos opArgsCombo = opArgs.at(removeSpace(op));
+				const std::string strippedOp = removeSpace(op);
+				OpArgCombos opArgsCombo = opArgs.at(strippedOp);
 				vector<MemoryType>* possibleArgs = &opArgsCombo.right;
 
 				if (possibleArgs->size() <= 0)return { NOTHING, 0 };
 
 				MemoryType argType = *selector(possibleArgs->begin(), possibleArgs->end());
-				MemoryTypeRange range = (*cpu).bruhMap2.count({ removeSpace(op),left,argType }) ? (*cpu).bruhMap2.at({ removeSpace(op),left,argType }) : (*cpu).rangesMap.at(argType);
+				MemoryTypeRange<cpu_t> range = (*cpu).bruhMap2.count({ strippedOp,left,argType }) ? (*cpu).bruhMap2.at({ strippedOp,left,argType }) : (*cpu).rangesMap.at(argType);
 
 				return { argType, (cpu_t)drand(range.max - range.min + 1) + range.min };
 			}
 
 			cpu::MemoryType getRandomRightType(string op, cpu::MemoryType left) {
-				printf("op: '%s'\n", removeSpace(op.c_str()).c_str());
+				//printf("op: '%s'\n", removeSpace(op.c_str()).c_str());
 				OpArgCombos opArgsCombo = opArgs.at(removeSpace(op));
 				vector<MemoryType>* possibleArgs = &opArgsCombo.right;
 
@@ -493,22 +551,26 @@ namespace gene {
 				return dna;
 			}
 			void applyInput(vector<int>* inputs) {//the registers? i think lol i forgot
-				(*cpu).resetRegisters();
-				(*cpu).resetMemory();
+				cpu->reset();
 				for (int i = 0; i < inputs->size(); i++) {
-					(*cpu).setMemory(i, inputs->at(i));
+					if (cpu->setMemory(i, inputs->at(i))) {
+						log("set memory\n");
+					}
+					else {
+						log("failed to set memory\n");
+					}
 				}
+				//cpu->dumpMemory();
 			}
 			void applyDna(dna_t dna) {//the code
+				std::fill(program->begin(), program->end(), 0);//zero the program vector for good luck
 				string code;
 				for (int i = 0; i < dna.size(); i++) {
 					string str = dna[i];
 					code.append(str);
 				}
 				//printf("%s\n", code.c_str());
-				cpu->resetRegisters();
 				progLength = (*cpu).assemble(&program->at(0), code.c_str(), code.size());
-				cpu->resetRegisters();
 				//printf("assembled progLength: %d\n", progLength);
 				if (progLength == 0) {
 					printf("'%s'\n", code.c_str());

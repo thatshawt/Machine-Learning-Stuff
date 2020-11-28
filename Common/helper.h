@@ -1,4 +1,5 @@
 #pragma once
+#include <algorithm>
 #include <vector>
 #include <random>
 #include <chrono>
@@ -72,7 +73,7 @@ static void print_array(type* begin, int size) {
 }
 template <class type>
 static void print_array(type data, int length) {
-	print_array<type>(data, length, ', ');
+	print_array<type>(data, length, ',');
 }
 
 template <class type>
@@ -141,22 +142,24 @@ static std::vector<std::string> splitString(std::string* str, char delimiter) {
 }
 
 //static std::default_random_engine generator;
-static std::minstd_rand generator(time(NULL));
+// static std::minstd_rand generator(time(NULL));
+static std::default_random_engine generator(time(NULL));
 
-static const std::uniform_int_distribution<int> intDist(std::numeric_limits<int>::min(),
+static std::uniform_int_distribution<int> intDist(std::numeric_limits<int>::min(),
 	std::numeric_limits<int>::max());
 static int irand() {
 	return intDist(generator);
 }
 
 //static double D_MAX = std::numeric_limits<double>::max() - 1;
-static const std::uniform_real_distribution<double> dDist(0,1);
+static std::uniform_real_distribution<double> dDist(0,1);
 static double drand() {
 	return dDist(generator);
 }
 
 //static float MAX = std::numeric_limits<float>::max();
-static const std::uniform_real_distribution<float> fDist(0, 1);
+//this generates from 0 -> 1
+static std::uniform_real_distribution<float> fDist(0, 1);
 static float frand() {
 	//return fmap(dist(generator), (float)0, MAX, (float)0, max);
 	return fDist(generator);
@@ -245,6 +248,14 @@ static std::string removeSpace(std::string str) {
 	return result;
 }
 
+static std::string removeSpaceAndLowerCase(std::string str) {
+		std::string result;
+	for (int i = 0; i < str.size(); i++) {
+		if (!isspace(str[i]))result += std::tolower(str[i]);
+	}
+	return result;
+}
+
 static int toNum(std::string str) {
 	std::string result;
 	for (int i = 0; i < str.size(); i++) {
@@ -274,7 +285,7 @@ static void printBitArray(unsigned char* bytes, int length, int offset) {
 //not sure how trash this is but lol ok
 class Timer {
 private:
-	std::chrono::steady_clock::time_point time;
+	std::chrono::system_clock::time_point time;
 public:
 	void start(void) {
 		this->time = std::chrono::high_resolution_clock::now();
@@ -291,7 +302,18 @@ public:
 	}
 };
 
-//http://www.cplusplus.com/reference/algorithm/max/
-template <class T> static const T& max(const T& a, const T& b) {
-	return (a < b) ? b : a;     // or: return comp(a,b)?b:a; for version (2)
+// //http://www.cplusplus.com/reference/algorithm/max/
+// template <class T>
+// static const T& max(const T& a, const T& b) {
+// 	return (a < b) ? b : a;     // or: return comp(a,b)?b:a; for version (2)
+// }
+
+// //http://www.cplusplus.com/reference/algorithm/min/
+// template <class T> const T& min(const T& a, const T& b) {
+// 	return !(b < a) ? a : b;     // or: return !comp(b,a)?a:b; for version (2)
+// }
+
+template<class T>
+static const T& between(const T& a, const T& b, const T& c) {
+	return std::max(b, std::min(a, c));
 }

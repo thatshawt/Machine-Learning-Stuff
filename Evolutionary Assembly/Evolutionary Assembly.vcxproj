@@ -72,17 +72,27 @@
   <PropertyGroup Label="UserMacros" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <LinkIncremental>true</LinkIncremental>
+    <IncludePath>D:\programming\c++\machine learning ftw lelol\Machine Learning Stuff\Cpu;$(VC_IncludePath);$(WindowsSDK_IncludePath);</IncludePath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <LinkIncremental>false</LinkIncremental>
-    <IncludePath>D:\programming\c++\machine learning ftw lelol\Machine Learning Stuff\Cpu;$(IncludePath)</IncludePath>
+    <IncludePath>D:\programming\c++\machine learning ftw lelol\Machine Learning Stuff\Cpu;</IncludePath>
+    <ExecutablePath>D:\programming\c++\machine learning ftw lelol\Machine Learning Stuff\Common;D:\programming\c++\machine learning ftw lelol\Machine Learning Stuff\Cpu;$(ExecutablePath)</ExecutablePath>
+    <ReferencePath>D:\programming\c++\machine learning ftw lelol\Machine Learning Stuff\Common;$(ReferencePath)</ReferencePath>
+    <LibraryPath>D:\programming\c++\machine learning ftw lelol\Machine Learning Stuff\Common;$(ReferencePath)</LibraryPath>
+    <SourcePath>D:\programming\c++\machine learning ftw lelol\Machine Learning Stuff\Common;$(SourcePath)</SourcePath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <LinkIncremental>true</LinkIncremental>
-    <IncludePath>D:\programming\c++\machine learning ftw lelol\Machine Learning Stuff\Cpu;D:\programming\c++\machine learning ftw lelol\Machine Learning Stuff\Common;$(IncludePath)</IncludePath>
+    <IncludePath>D:\programming\c++\machine learning ftw lelol\Machine Learning Stuff\Cpu;D:\programming\c++\machine learning ftw lelol\Machine Learning Stuff\Cpu;D:\programming\c++\machine learning ftw lelol\Machine Learning Stuff\Common;$(IncludePath)</IncludePath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <LinkIncremental>false</LinkIncremental>
+    <IncludePath>D:\programming\c++\machine learning ftw lelol\Machine Learning Stuff\Cpu;</IncludePath>
+    <ExecutablePath>D:\programming\c++\machine learning ftw lelol\Machine Learning Stuff\Common;D:\programming\c++\machine learning ftw lelol\Machine Learning Stuff\Cpu;$(ExecutablePath)</ExecutablePath>
+    <ReferencePath>D:\programming\c++\machine learning ftw lelol\Machine Learning Stuff\Common;$(ReferencePath)</ReferencePath>
+    <LibraryPath>D:\programming\c++\machine learning ftw lelol\Machine Learning Stuff\Common;$(ReferencePath)</LibraryPath>
+    <SourcePath>D:\programming\c++\machine learning ftw lelol\Machine Learning Stuff\Common;$(SourcePath)</SourcePath>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <ClCompile>
@@ -105,6 +115,10 @@
       <PreprocessorDefinitions>WIN32;NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <LanguageStandard>stdcpp17</LanguageStandard>
+      <MultiProcessorCompilation>true</MultiProcessorCompilation>
+      <EnableEnhancedInstructionSet>AdvancedVectorExtensions2</EnableEnhancedInstructionSet>
+      <AdditionalIncludeDirectories>D:\programming\c++\machine learning ftw lelol\Machine Learning Stuff\Common;D:\programming\c++\machine learning ftw lelol\Machine Learning Stuff\Cpu;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <FavorSizeOrSpeed>Speed</FavorSizeOrSpeed>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -135,6 +149,10 @@
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
+      <MultiProcessorCompilation>true</MultiProcessorCompilation>
+      <EnableEnhancedInstructionSet>AdvancedVectorExtensions2</EnableEnhancedInstructionSet>
+      <AdditionalIncludeDirectories>D:\programming\c++\machine learning ftw lelol\Machine Learning Stuff\Common;D:\programming\c++\machine learning ftw lelol\Machine Learning Stuff\Cpu;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <FavorSizeOrSpeed>Speed</FavorSizeOrSpeed>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>

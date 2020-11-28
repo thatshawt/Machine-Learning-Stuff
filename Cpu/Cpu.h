@@ -14,8 +14,8 @@
 #include "helper.h"
 
 #define CPU_T template <class cpu_t>
-//#define CPU_T template< class cpu_t = int, class = class std::enable_if<std::is_arithmetic<cpu_t>::value, cpu_t>::type>
-//#define CPU_T template<typename cpu_t> \
+//#define CPU_TEMPLATE template< class cpu_t = int, class = class std::enable_if<std::is_arithmetic<cpu_t>::value, cpu_t>::type>
+//#define CPU_TEMPLATE template<typename cpu_t> \
 //typename std::enable_if<std::is_arithmetic<cpu_t>::value>::type
 
 #ifndef REGISTER_SIZE
@@ -44,7 +44,7 @@ namespace cpu {
 	NOTHING = 5
 	};
 
-	CPU_T
+	CPU_TEMPLATE
 	struct OpArgument {
 		MemoryType type;
 		cpu_t val;
@@ -55,7 +55,7 @@ namespace cpu {
 	//idk about NOTHING type but whatever breh
 	MemoryType fromPrefix(std::string prefix);
 
-	CPU_T
+	CPU_TEMPLATE
 	struct MemoryTypeRange {
 		cpu_t min;
 		cpu_t max;
@@ -73,14 +73,14 @@ namespace cpu {
 	//extern std::map<MemoryType, MemoryTypeRange<long>> memoryRanges;
 
 	//this accepts an entire opcode the other method accepts only single args
-	CPU_T
+	CPU_TEMPLATE
 	std::pair<OpArgument<cpu_t>, OpArgument<cpu_t>> str_to_args(std::string str);
 
-	CPU_T
+	CPU_TEMPLATE
 	std::string arg_to_string(OpArgument<cpu_t> arg);
 
 	//TODO: add range checks for the different memory types
-	CPU_T
+	CPU_TEMPLATE
 	OpArgument<cpu_t> string_to_arg(std::string arg);
 
 	int str_to_baseOp(std::string str);
@@ -94,7 +94,7 @@ namespace cpu {
 
 	//https://stackoverflow.com/questions/14294267/class-template-for-numeric-types
 	//ill learn this stuff eventually bruv dont worry atleast im giving credit
-	CPU_T
+	CPU_TEMPLATE
 		class CpuSimulator {//this thing be 32 bit i guess
 		private:
 			cpu_t registers[REGISTER_SIZE];//16 i guess idk
