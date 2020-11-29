@@ -338,3 +338,14 @@ ASALocalRun/
 
 # BeatPulse healthcheck temp database
 healthchecksdb
+
+#ignore cmake stuff
+build
+**/build
+**/CMakeFiles
+**/*.cmake
+**/CMakeCache.txt
+**/Makefile
+
+#dont need to show them this i guess?
+.vscode

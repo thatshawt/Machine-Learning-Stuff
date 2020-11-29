@@ -1,6 +1,6 @@
 //#include <windows.h>
 
-#define MEMORY_SIZE 5 //idk we just want some ez strats you feel?
+#define MEMORY_SIZE 1 //idk we just want some ez strats you feel?
 
 //#include <helper.h>
 //#include "Cpu2.h"
@@ -24,6 +24,7 @@ int main() {
 	{
 		//---------IDK WE JUST RUN A PROGRAM HERE---------
 		printf("PROGRAM EXECUTION TEST\n");
+		
 		CpuRunProgramThread<int> cpuThread(&cpuz);
 		unsigned char prog[0xFFFF];
 		int progLength = 0;
@@ -34,13 +35,16 @@ int main() {
 		//cpuz.runProgram(prog, progLength);
 		//printf("running program\n");
 		printf("progLength: %d\n", progLength);
+
+		cpuz.setMemory(0, 69);
+
 		cpuThread.runProgram(&prog[0], progLength);
 		bool completed = cpuThread.sleepUntilComplete(10);
 		printf("%s\n", completed ? "finished execution" : "execution took too long");
 
 		cpuz.dumpRegisters();
 		cpuz.dumpPointers();
-		//cpuz.dumpMemory();
+		cpuz.dumpMemory();
 		//---------END---------
 	}
 
@@ -55,7 +59,8 @@ int main() {
 	{
 		//---------TESTING MUTATION---------
 		printf("MUTATATION TEST\n");
-		std::vector<std::string> op = splitString(&string("cmp r3 0"), ' ');
+		string test = string("cmp r3 0");
+		std::vector<std::string> op = splitString(&test, ' ');
 		for (int i = 0; i < op.size(); i++) {
 			printf("'%s'\n", op[i].c_str());
 		}
@@ -81,19 +86,23 @@ int main() {
 		//---------END---------
 	}
 
-
-
 	{
 		//---------GENE TEST---------
-		//printf("EVOLUTION TEST\n");
-		//int generations = 10000;
-		//int species = 20;
-		//genz.params.tournamentK = 20;
-		//vector<vector<int>> x = { {1},{2},{3} };
-		//vector<vector<int>> y = { {1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0},
-		//						  {2,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0},
-		//						  {3,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0} };
-		//genz.train(generations, species, x, y);
+		printf("EVOLUTION TEST\n");
+		int generations = 10000000;
+		int species = 1000;
+		genz.params.tournamentK = species;
+		genz.params.maxProgTime = 5;//5 milliseconds i guess mah boi
+		genz.params.mutatePercent = 0.7f;
+		genz.params.mutateNewOpChance = 0.005f;
+		genz.params.mutateDeleteOpChance = 0.005f;
+		genz.params.mutateOpThreshold = 0.01f;
+		genz.params.mutateRange = 1;
+		vector<vector<int>> x = { {1},{2},{3} };
+		vector<vector<int>> y = { {1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0},
+								  {2,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0},
+								  {3,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0} };
+		genz.train(generations, species, x, y);
 		//---------END---------
 	}
 	//Sleep(3000);
