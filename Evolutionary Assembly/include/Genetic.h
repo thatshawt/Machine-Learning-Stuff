@@ -11,7 +11,7 @@
 #define DNA_T template <class dna_t>
 
 //#include "Cpu2.h"
-#include <CpuThreading.h>
+#include "CpuThreading.h"
 //#include <algorithm>
 #include <cstdarg>
 #include <assert.h>
@@ -20,6 +20,13 @@
 using namespace std;//bruh ew get those stds out of here
 using namespace cpu;
 //TODO: cure cancer
+
+/*TODO: some ideas
+	-sub routines are added and used conditionally.
+	-sub routines are added parts of it are used on condition.
+	-sub routines are added and the conditions to use it are described using a graph
+	-sub routines are added and the conditions to use it are described using a
+*/
 
 /*
 list of bruh moments:
@@ -80,11 +87,11 @@ namespace gene {
 			assert(dna.size() == maxSpecies);
 
 			for (int gen = 0; gen < generations; gen++) {
-				printf("Generation %d\n", gen);
+				printf("Generation %d, ", gen);
 				vector<costInfo> costs(maxSpecies, { 0,0 });
 				for (int species = 0; species < maxSpecies; species++) {
 					log("Species_Start: %d\n", species);
-					printf("'%s'\n", combine((vector<string>)dna[species]).c_str());
+					//printf("'%s'\n", combine((vector<string>)dna[species]).c_str());
 					//printf("Code:%s\n\n", combine(dna[species]).c_str());
 					double cost = 0;
 					applyDna(dna[species]);
@@ -120,8 +127,14 @@ namespace gene {
 				std::sort(costs.begin(), costs.end(), compare);
 
 				lowestCost = costs[0].cost;
-				printf("costs size: %d, lowest cost: %f\n", (int)costs.size(), lowestCost);
-
+				// printf("costs size: %d, lowest cost: %f\n", (int)costs.size(), lowestCost);
+				float avg = 0;
+				const int dnaLength = dna.size();
+				for(int a = 0; a < dnaLength; a++){
+					avg += dna[a].size();
+				}
+				avg /= (float)dnaLength;
+				printf("average program length: %f\n", avg);
 				geneticOperations(&dna, costs);
 
 				if (gen == generations - 1)
@@ -167,7 +180,7 @@ namespace gene {
 		int crossOverMin = 1;
 
 		float newDnaChance = 0.9f;//this makes the randomDna return longer dna strands
-		float deleteDnaChance = 0.1f;//TODO: implement this
+		float deleteDnaChance = 0.1f;
 
 		int maxProgTime = 1;//max amount of time a program can last in milliseconds
 	};
@@ -316,12 +329,14 @@ namespace gene {
 				//selection
 				//im gonna use tournament selection cus i havent tried that yet
 				//idk kinda cringe to implemet jk its ez mode lets go bois
-				vector<dna_t> init = vector<dna_t>(*dna);//copy of dna
-				vector<pair<dna_t, int>> population;
+				// vector<dna_t> init = vector<dna_t>(*dna);//copy of dna
+				// vector<pair<dna_t, int>> population;
+				vector<pair<dna_t*, int>> population;
+				
 				//BruhIterator iter(&population);
 
-				for (int i = 0; i < init.size(); i++) {
-					population.push_back({init.at(i), i});
+				for (int i = 0; i < dna->size(); i++) {
+					population.push_back({&dna->at(i), i});
 				}
 
 				std::shuffle(population.begin(), population.end(), std::default_random_engine(time(NULL)));
@@ -332,7 +347,7 @@ namespace gene {
 				}
 
 				for (int i = 0; i < (population.size()); i++) { //iterating throuch the list of programs
-					pair<dna_t, int>* currentDnaPtr = &population[i];
+					pair<dna_t*, int>* currentDnaPtr = &population[i];
 					dna_t* realDnaPtr = &((*dna)[currentDnaPtr->second]);
 
 					for (int j = 0; j < /*currentDna.size()*/realDnaPtr->size()-1; j++) { //iterating inside a singular program
@@ -437,12 +452,12 @@ namespace gene {
 				}
 				
 				//TODO: implement the ability to use crossOver parameters from params variable
-				for (int i = 0; i < (population.size()); i++) { //crossover baby
-					if (frand(1) <= params.crossOverPercent) {
-						pair<dna_t, int>* currentDna = &population[i];
+				for (int i = 0; i < (population.size()); i++) {
+					if (frand(1) <= params.crossOverPercent) { //crossover baby
+						pair<dna_t*, int>* currentDna = &population[i];
 						dna_t* realCurrentDna = &((*dna)[currentDna->second]);
 
-						pair<dna_t, int>* selectedDna = &population[irand(population.size() - 1)];
+						pair<dna_t*, int>* selectedDna = &population[irand(population.size() - 1)];
 						dna_t* realSelectedDna = &((*dna)[selectedDna->second]);
 
 						const int minProgSize = min(realSelectedDna->size(), realCurrentDna->size());
@@ -463,14 +478,6 @@ namespace gene {
 						}
 					}
 				}
-				//crossover possibilities
-				//get some code and then switch some lines
-				//
-				//params:
-				//	crossoverPercent:       how liekly crossover is to happen
-				//	crossoverLengthMax:     maximum lines to get switched
-				//	crossoverLengthMin:     minimum lines to get switched
-
 			}
 
 			random_selector<> selector{};
@@ -490,6 +497,7 @@ namespace gene {
 					if (count == num)return string(iter->first);
 					count++;
 				}
+				return "";
 			}
 
 			cpu::OpArgument<cpu_t> getRandomLeft(string op) {

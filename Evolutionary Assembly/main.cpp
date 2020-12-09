@@ -91,11 +91,11 @@ int main() {
 		printf("EVOLUTION TEST\n");
 		int generations = 10000000;
 		int species = 1000;
-		genz.params.tournamentK = species;
+		genz.params.tournamentK = species/2;
 		genz.params.maxProgTime = 5;//5 milliseconds i guess mah boi
 		genz.params.mutatePercent = 0.7f;
 		genz.params.mutateNewOpChance = 0.005f;
-		genz.params.mutateDeleteOpChance = 0.005f;
+		genz.params.mutateDeleteOpChance = 0.0045f;
 		genz.params.mutateOpThreshold = 0.01f;
 		genz.params.mutateRange = 1;
 		vector<vector<int>> x = { {1},{2},{3} };

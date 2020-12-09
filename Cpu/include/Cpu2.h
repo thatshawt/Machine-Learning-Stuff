@@ -335,7 +335,7 @@ namespace cpu {
 				rangesMap.insert(rangePair{ REGISTER, {0,REGISTER_SIZE - 1} });
 				rangesMap.insert(rangePair{ MEMORY, {0,MEMORY_SIZE - 1} });
 				rangesMap.insert(rangePair{ FLAG, {0,FLAGS - 1} });
-				rangesMap.insert(rangePair{ POINTER, {0, MEMORY_SIZE - 1} });//TODO i havent implemented yet
+				rangesMap.insert(rangePair{ POINTER, {0, MEMORY_SIZE - 1} });
 				//rangesMap.insert(rangePair{ GRAPHICS, {0,GRAPHICS_SIZE - 1} });//TODO i havent implemented yet
 
 				bruhMap.insert(bruhRange{ {"jmp", NUMBER}, {0, number} });
@@ -443,7 +443,7 @@ namespace cpu {
 				}
 			}
 
-			char getOpSize() {
+			static char getOpSize() {
 				return 2 * sizeof(cpu_t) + 1;
 			}
 
@@ -1115,25 +1115,9 @@ namespace cpu {
 				return executeOp(op, left, right);
 			}
 
-			int assemble(byte* prog, std::string path) {
-				if (verbose)printf("trying open bruh\n");
-				std::string str;
-				std::ifstream file;
-				file.open(path.c_str(), std::ios::in);
-				if (file.is_open()) {
-					std::string line;
-					while (getline(file, line)) {
-						str.append(line + "\n");
-					}
-					file.close();
-					if (verbose)printf("%s\n", str.c_str());
-				}
-				str.append(" ");// "do this in rememberance of me" -Big Space
-				if (verbose)printf("closing file\n\n");
-				return assemble(prog, str.c_str(), str.size());
-			}
-
-			int assemble(byte* program, const char str[], int strLengthA) {
+			// CPU_TEMPLATE
+			static inline int assemble(byte* program, const char str[], int strLengthA) {
+				bool verbose = false;
 				const int strLength = strLengthA + 1;
 				std::map<std::string, int> labels;
 				cpu_t currentOp[3] = {0,0,0};//ops can only be 3 max lolll
@@ -1151,6 +1135,8 @@ namespace cpu {
 				std::string macroName;
 				std::string macroBody;
 				int macroIndex = 0;
+
+				const char OP_SIZE = CpuSimulator<cpu_t>::getOpSize();
 
 				if (verbose)printf("PREPARSE\n");
 				for (int i = 0; i < strLength; i++) {
@@ -1329,7 +1315,7 @@ namespace cpu {
 										if (verbose)printf("actually a nop\n");
 										if (!preParse)addToProgram(program, currentOp, programI);
 										opI = 0;
-										programI += getOpSize();
+										programI += OP_SIZE;
 									}
 									else {
 										if (verbose)printf("added op %d\n", currentOp[0]);
@@ -1349,7 +1335,7 @@ namespace cpu {
 							//lol
 							if (false && strcmp(identifier.c_str(), "nop") == 0) {
 								if (!preParse)addToProgram(program, currentOp, programI);
-								programI += getOpSize();
+								programI += OP_SIZE;
 								if (verbose)printf("tis but a nop\n");
 								currentOp[0] = 0x69;
 								opI = 0;
@@ -1373,7 +1359,7 @@ namespace cpu {
 											currentOp[0] = 0x36;
 										if (verbose)printf("numeber machine go %d brrrrrrrr\n", num);
 										if (!preParse)addToProgram(program, currentOp, programI);
-										programI += getOpSize();
+										programI += OP_SIZE;
 										opI = 0;
 									}
 								}
@@ -1381,7 +1367,7 @@ namespace cpu {
 							else if (currentOp[0] == opMap.at("not")) {//NOT needs special attention
 								currentOp[0] += static_cast<int>(left) - 1;//specific to Not instructions
 								if (!preParse)addToProgram(program, currentOp, programI);
-								programI += getOpSize();
+								programI += OP_SIZE;
 								opI = 0;
 								if (verbose)printf("added the not opcode thing currenOp[0]: %d\n", currentOp[0]);
 							}
@@ -1394,7 +1380,7 @@ namespace cpu {
 							//	if (verbose)printf("added gmov lets goo currenOp[0]: %d\n", currentOp[0]);
 							//}
 							else if (preParse && isLabel) {
-								programI += getOpSize();
+								programI += OP_SIZE;
 								opI = 0;
 							}
 							else if (isMacro) {
@@ -1426,7 +1412,7 @@ namespace cpu {
 									currentOp[0] += (cpu_t)offset;
 									if (!preParse)addToProgram(program, currentOp, programI);
 
-									programI += getOpSize();
+									programI += OP_SIZE;
 									opI = 0;
 								}
 							}
@@ -1466,16 +1452,36 @@ namespace cpu {
 				return programI;
 			}
 
+			int assemble(byte* prog, std::string path) {
+				if (verbose)printf("trying open bruh\n");
+				std::string str;
+				std::ifstream file;
+				file.open(path.c_str(), std::ios::in);
+				if (file.is_open()) {
+					std::string line;
+					while (getline(file, line)) {
+						str.append(line + "\n");
+					}
+					file.close();
+					if (verbose)printf("%s\n", str.c_str());
+				}
+				str.append(" ");// "do this in rememberance of me" -Big Space
+				if (verbose)printf("closing file\n\n");
+				return assemble(prog, str.c_str(), str.size());
+			}
+
 			const static int maskByte = 255;
 
-			void addToProgram(byte* program, cpu_t* op, int index) {
+			static void addToProgram(byte* program, cpu_t* op, int index) {
+				const char OP_SIZE = CpuSimulator<cpu_t>::getOpSize();
+				bool verbose = false;
 				if(1==2) {
 					printf("added to program %d %d %d| ", op[0], op[1], op[2]);
 					printf("op: ");  bin(op[0]); printf(", arg1: "); bin(op[1]); printf(", arg2: ");  bin(op[2]);
 					printf("\n");
 				}
 
-				char bytes = (getOpSize() - 1) / 2;
+				char bytes = (OP_SIZE - 1) / 2;
 				if (verbose)printf("bytes: %d\n", bytes);
 
 				program[index] = op[0];//this is probably already correct //im scared now thats its not 'probably correct'
@@ -1508,7 +1514,7 @@ namespace cpu {
 				op[1] = 0;
 				op[2] = 0;
 
-				if (verbose)printBitArray(program, getOpSize(), index);
+				if (verbose)printBitArray(program, OP_SIZE, index);
 			}
 
 	// 		void dumpHex(byte* program) {

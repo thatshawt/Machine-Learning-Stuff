@@ -112,5 +112,6 @@ namespace cpu {
 	MemoryTypeData::MemoryTypeData() {
 		this->hasSuffix = false;
 	}
+
 	
 }
