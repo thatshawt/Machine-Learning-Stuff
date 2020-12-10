@@ -94,6 +94,13 @@ namespace cpu {
 		cpu_t val;
 	};
 
+	CPU_TEMPLATE
+	struct __attribute__((__packed__))Instruction{
+		unsigned char opcode;
+		cpu_t left;
+		cpu_t right;
+	};
+
 	std::string getPrefix(MemoryType type);
 
 	//idk about NOTHING type but whatever breh
@@ -451,7 +458,6 @@ namespace cpu {
 				//dumpRegisters();
 				if (doReset)reset();
 				if (verbose) {
-					printf("test\n");
 					printf("code[0] = %d\n", code[0]);
 					printf("opSize = %d\n", getOpSize());
 				}
@@ -460,16 +466,16 @@ namespace cpu {
 					//printf("ip: %d, proglength: %d, opsize: %d, interrupt: %d\n", ip, progLength, opsize, interruptz.load());
 					if (interruptz.load()) {
 						interruptz.store(false);
-						//printf("interrupt called and now its: %d\n", interruptz.load());
+						// printf("interrupt called and now its: %d\n", interruptz.load());
 						break;
 					}
-					std::vector<byte> op(getOpSize(), 0);
-					for (int j = 0; j < getOpSize(); j++) {
+					std::vector<byte> op(opsize, 0);
+					for (int j = 0; j < opsize; j++) {
 						op[j] = code[ip + j];
 					}
 
 					//if (verbose)printBitArray(code, getOpSize(), 0);
-					executeOp(op);
+					executeOp(op, progLength);
 					//dumpFlags();
 					//dumpPointers();printf("\n");
 				}
@@ -480,7 +486,7 @@ namespace cpu {
 				gp = between(gp, 0, GRAPHICS_SIZE - 1);
 			}
 
-			bool executeOp(cpu_t op, cpu_t left, cpu_t right) {
+			bool executeOp(cpu_t op, cpu_t left, cpu_t right, int progLength) {
 				PointerFlags pFlag1 = getPointerFlag1();
 				cpu_t* pMemory1 = flagToMemory(pFlag1);
 				cpu_t* pPointer1 = flagToPointer(pFlag1);
@@ -663,26 +669,26 @@ namespace cpu {
 
 					//branchless coding ftw
 				case 0x30://jump location
-					ip = jmp_range_check(left) - getOpSize();
+					ip = jmp_range_check(left, progLength) - getOpSize();
 					if (verbose)printf("jmp to %d\n", left);
 					break;
 				case 0x31://jumpIfGT location
-					ip = (flags[0] * (jmp_range_check(left) - getOpSize())) + (!flags[0] * (unsigned long)ip);
+					ip = (flags[0] * (jmp_range_check(left, progLength) - getOpSize())) + (!flags[0] * (unsigned long)ip);
 					break;
 				case 0x32://jumpIfNotGT location
-					ip = (!flags[0] * (jmp_range_check(left) - getOpSize())) + (flags[0] * (unsigned long)ip);
+					ip = (!flags[0] * (jmp_range_check(left, progLength) - getOpSize())) + (flags[0] * (unsigned long)ip);
 					break;
 				case 0x33://jumpIfEqual location
-					ip = (flags[1] * (jmp_range_check(left) - getOpSize())) + (!flags[1] * (unsigned long)ip);
+					ip = (flags[1] * (jmp_range_check(left, progLength) - getOpSize())) + (!flags[1] * (unsigned long)ip);
 					break;
 				case 0x34://jumpIfNotEqual location
-					ip = (!flags[1] * (jmp_range_check(left) - getOpSize())) + (flags[1] * (unsigned long)ip);
+					ip = (!flags[1] * (jmp_range_check(left, progLength) - getOpSize())) + (flags[1] * (unsigned long)ip);
 					break;
 				case 0x35://jumpIfNotZero location
-					ip = (!flags[1] * (jmp_range_check(left) - getOpSize())) + (flags[1] * (unsigned long)ip);
+					ip = (!flags[1] * (jmp_range_check(left, progLength) - getOpSize())) + (flags[1] * (unsigned long)ip);
 					break;
 				case 0x36://jump register
-					ip = jmp_range_check(registers[left]) - getOpSize();
+					ip = jmp_range_check(registers[left], progLength) - getOpSize();
 					break;
 				case 0x37:
 					//nop
@@ -1092,13 +1098,13 @@ namespace cpu {
 			//always round down
 			//and make sure its greater than zero
 			//ill look back at this and not understand a single word of it
-			cpu_t jmp_range_check(cpu_t left) {
-				if (left > 9999 || left < -9999)throw 20;//idk if this works
-				//TODO: dont let this get greater than program length which it currently does
-				return std::max(0, getOpSize() * ((int)((float)left / (float)getOpSize())));
+			cpu_t jmp_range_check(cpu_t left, int progLength) {
+				// if (left > 99999 || left < -99999)throw 20;//idk if this works
+				return std::min(std::max(0, getOpSize() * ((int)((float)left / (float)getOpSize()))), progLength-1);
+				// return between(left, 0, progLength-1);
 			}
 
-			bool executeOp(std::vector<byte> code) {
+			bool executeOp(std::vector<byte> code, int progLength) {
 				if (step)getchar();
 				cpu_t op = code[0];
 				cpu_t left;
@@ -1112,7 +1118,8 @@ namespace cpu {
 				for (int byte = bytes; byte > 0; byte--) {
 					right = (right << 8) | code[bytes + byte];
 				}
-				return executeOp(op, left, right);
+
+				return executeOp(op, left, right, progLength);
 			}
 
 			// CPU_TEMPLATE
@@ -1475,8 +1482,8 @@ namespace cpu {
 			static void addToProgram(byte* program, cpu_t* op, int index) {
 				const char OP_SIZE = CpuSimulator<cpu_t>::getOpSize();
 				bool verbose = false;
-				if(1==2) {
-					printf("added to program %d %d %d| ", op[0], op[1], op[2]);
+				if(false) {
+					printf("%d: added to program %d %d %d| ", index, op[0], op[1], op[2]);
 					printf("op: ");  bin(op[0]); printf(", arg1: "); bin(op[1]); printf(", arg2: ");  bin(op[2]);
 					printf("\n");
 				}
@@ -1514,7 +1521,7 @@ namespace cpu {
 				op[1] = 0;
 				op[2] = 0;
 
-				if (verbose)printBitArray(program, OP_SIZE, index);
+				// if (verbose || true)printBitArray(program, OP_SIZE, index);
 			}
 
 	// 		void dumpHex(byte* program) {

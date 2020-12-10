@@ -90,18 +90,30 @@ int main() {
 		//---------GENE TEST---------
 		printf("EVOLUTION TEST\n");
 		int generations = 10000000;
-		int species = 1000;
-		genz.params.tournamentK = species/2;
-		genz.params.maxProgTime = 5;//5 milliseconds i guess mah boi
+		int species = 300;
+
+		// cpuz.verbose = true;
+		// genz.step = true;
+		
+		genz.params.newDnaChance = 0.95f;
+
+		genz.params.tournamentK = (int)((float)species*0.35f);
+		
+		genz.params.maxProgTime = 5; //5 milliseconds i guess mah boi
+
 		genz.params.mutatePercent = 0.7f;
-		genz.params.mutateNewOpChance = 0.005f;
-		genz.params.mutateDeleteOpChance = 0.0045f;
+		genz.params.mutateNewOpChance = 0.058f;
+		genz.params.mutateDeleteOpChance = 0.055f;
 		genz.params.mutateOpThreshold = 0.01f;
-		genz.params.mutateRange = 1;
-		vector<vector<int>> x = { {1},{2},{3} };
-		vector<vector<int>> y = { {1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0},
-								  {2,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0},
-								  {3,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0} };
+		genz.params.mutateRange = 2;
+		
+		vector<vector<int>> x = { {1},{2},{3},{4},{5} };
+		vector<vector<int>> y = { {2,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0},
+								  {3,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0},
+								  {4,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0},
+								  {5,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0},
+								  {6,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0}
+								  };
 		genz.train(generations, species, x, y);
 		//---------END---------
 	}

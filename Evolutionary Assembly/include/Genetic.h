@@ -56,7 +56,7 @@ namespace gene {
 	protected:
 		double lowestCost = 0;
 
-		dna_t bestDna;
+		dna_t* bestDna;
 
 		int maxSpecies = 0;
 
@@ -70,6 +70,7 @@ namespace gene {
 		virtual dna_t getRandomDna() = 0;
 	public:
 		bool debug = false;
+		bool step = false;
 		void train(int generations, int maxSpecies, vector<vector<int>> x, vector<vector<int>> y) {
 			vector<dna_t> dna;
 
@@ -80,9 +81,10 @@ namespace gene {
 			}
 
 			//TEST TO SEE IF COST IS WORKING
-			//dna_t solutionDna = {"\nmov f2 1", "\nmov f3 1", "\nmov ptr 0", "\nmov r0 mem"};
-			//dna[0] = solutionDna;
-			//printf("solutionDna: '%s'\n", combine((vector<string>)solutionDna).c_str());
+			// dna_t solutionDna = {"\nmov r0 69"};
+			// dna_t solutionDna = {"\nmov f2 1", "\nmov f3 1", "\nmov ptr 0", "\nmov r0 mem"};
+			// dna[0] = solutionDna;
+			// printf("solutionDna: '%s'\n", combine((vector<string>)solutionDna).c_str());
 
 			assert(dna.size() == maxSpecies);
 
@@ -91,7 +93,7 @@ namespace gene {
 				vector<costInfo> costs(maxSpecies, { 0,0 });
 				for (int species = 0; species < maxSpecies; species++) {
 					log("Species_Start: %d\n", species);
-					//printf("'%s'\n", combine((vector<string>)dna[species]).c_str());
+					// printf("'%s'\n", combine((vector<string>)dna[species]).c_str());
 					//printf("Code:%s\n\n", combine(dna[species]).c_str());
 					double cost = 0;
 					applyDna(dna[species]);
@@ -101,15 +103,15 @@ namespace gene {
 					//log("applied dna\n");
 					for (int i = 0; i < x.size(); i++) {
 						//log("Apply input: %d, Input: %s\n", i, array_to_string<int>(&x[i][0], x[i].size()).c_str());
-						applyInput(&x[i]);
+						//applyInput(&x[i]);
 						//log("applied input\n");
 
 						//printf("i: %d\n", i);
 						auto expected = y[i];
-						//log("expected: %s\n", array_to_string(&expected[0], expected.size()).c_str());
+						// printf("expected: %s\n", array_to_string(&expected[0], expected.size()).c_str());
 						
 						auto result = getResult(&x[i]);
-						//log("result: %s\n", array_to_string(&result[0], result.size()).c_str());
+						// printf("result: %s\n", array_to_string(&result[0], result.size()).c_str());
 
 						this->cost(&cost, expected, result);
 						log("calculated cost: %f\n\n", cost);
@@ -121,13 +123,13 @@ namespace gene {
 					costs[species].species = species;
 					costs[species].cost = cost;
 					//totalCost += cost;
-					//printf("Species_End: %d cost: %f\n\n", species, cost);
-
+					// printf("Species_End: %d cost: %f\n\n", species, cost);
+					if(step)getchar();
 				}
 				std::sort(costs.begin(), costs.end(), compare);
 
 				lowestCost = costs[0].cost;
-				// printf("costs size: %d, lowest cost: %f\n", (int)costs.size(), lowestCost);
+				printf("costs size: %d, lowest cost: %f, ", (int)costs.size(), lowestCost);
 				float avg = 0;
 				const int dnaLength = dna.size();
 				for(int a = 0; a < dnaLength; a++){
@@ -135,13 +137,13 @@ namespace gene {
 				}
 				avg /= (float)dnaLength;
 				printf("average program length: %f\n", avg);
+				
 				geneticOperations(&dna, costs);
 
-				if (gen == generations - 1)
-					bestDna = dna[costs[0].species];
+				bestDna = &(dna[costs[0].species]);
 
-				if (lowestCost <= 0.01 && bestDna.size() != 0) {
-					printf("prog length: %d, '%s'\n", ((vector<string>)bestDna).size(), combine((vector<string>)bestDna).c_str());
+				if (lowestCost <= 0.00000001f /*&& bestDna.size() != 0*/) {
+					printf("WINNER: prog length: %d, '%s'\n", bestDna->size(), combine(*bestDna).c_str());
 					return;
 				}
 			}
@@ -172,7 +174,7 @@ namespace gene {
 		float mutateOpThreshold = 0.2f;
 		float mutateRightType = 0.1f;
 		float mutateLeftType = 0.1f;
-		float mutateNewOpChance = 0.5f;
+		float mutateNewOpChance = 0.5f;//adds new line(s) to program
 		float mutateDeleteOpChance = 0.05f;
 
 		float crossOverPercent = 0.3f;
@@ -182,7 +184,7 @@ namespace gene {
 		float newDnaChance = 0.9f;//this makes the randomDna return longer dna strands
 		float deleteDnaChance = 0.1f;
 
-		int maxProgTime = 1;//max amount of time a program can last in milliseconds
+		int maxProgTime = 10;//max amount of time a program can last in milliseconds
 	};
 
 	//ill learn this stuff eventually bruv dont worry atleast im giving credit
@@ -292,19 +294,21 @@ namespace gene {
 			cpu::CpuRunProgramThread<cpu_t> cpuThread { &cpu };
 
 			vector<int> getResult(vector<int>* inputs) {
-				//printf("getresult start, proglength: %d\n", progLength);
+				// printf("getresult start, proglength: %d\n", progLength);
 				applyInput(inputs);//idk mannnn
+				// print_array(&program->at(0), progLength);
 				cpuThread.runProgram(&program->at(0), progLength);
-				if (!cpuThread.sleepUntilComplete(params.maxProgTime))log("took too long\n");
+				const bool tookTooLong = cpuThread.sleepUntilComplete(params.maxProgTime);
+				// if (!tookTooLong)printf("took too long\n");
 
-				//cpu->dumpRegisters();
-
-				//printf("ran program\n");
-				vector<int> registers;
-				for (int i = 0; i < 16; i++) {
-					registers.push_back(cpu->getRegister(i));
+				vector<int> registers(16, 0);
+				if(!tookTooLong){
+					for (int i = 0; i < 16; i++) {
+						registers.push_back(cpu->getRegister(i));
+					}
 				}
 				//printf("getresult finish\n");
+				// printf("getresult finish, proglength: %d\n", progLength);
 				return registers;
 			}
 
@@ -335,16 +339,26 @@ namespace gene {
 				
 				//BruhIterator iter(&population);
 
-				for (int i = 0; i < dna->size(); i++) {
-					population.push_back({&dna->at(i), i});
+				// for (int i = 0; i < dna->size(); i++) {
+				// 	population.push_back({&dna->at(i), i});
+				// }
+
+				for(int i=0; i < params.tournamentK; i++){
+					population.push_back({&dna->at(costs[i].species), costs[i].species});//add highest performing dna
+				}
+
+				//we are just gonna do this now since we got nothing better to do
+				//we replace the underperforming dna with random dna cus it wasnt good enough
+				for(int i=params.tournamentK; i<costs.size(); i++){
+					dna->at(costs[i].species) = getRandomDna();
 				}
 
 				std::shuffle(population.begin(), population.end(), std::default_random_engine(time(NULL)));
 
-				auto pBegin = population.begin();
-				for (int k = 1; k <= (population.size() - params.tournamentK); k++) {
-					population.erase(pBegin + k);
-				}
+				// auto pBegin = population.begin();
+				// for (int k = 1; k <= population.size(); k++) {
+				// 	population.erase(pBegin + k);
+				// }
 
 				for (int i = 0; i < (population.size()); i++) { //iterating throuch the list of programs
 					pair<dna_t*, int>* currentDnaPtr = &population[i];

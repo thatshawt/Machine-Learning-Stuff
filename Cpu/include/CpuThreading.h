@@ -24,8 +24,8 @@ namespace cpu {
 			//printf("actually run program\n");
 			(*emulator)->runProgram(code, progLength);
 			isCompleteZ.store(true);
-			//printf("thread detatched by finishing\n");
-			killThread();
+			//printf("thread finished\n");
+			//killThread();
 		}
 
 
@@ -49,15 +49,16 @@ namespace cpu {
 
 		inline void runProgram(byte* code, int progLength) {
 			//printf("run program stasrt\n");
-			if(init)killThread();
+			// if(init)killThread(); //FIXME: init never gets set to false and the cpu always gets interrupted
 			this->isCompleteZ.store(false);
 			this->isStarted.store(false);
 			this->isDoneDying.store(false);
 
 			//mu.lock();
 			//(*emulator)->resetInterrupt();
-			//BUG: theThread.joinable() returns true and next line calls std::terminate()
+			//BUG: theThread is joinable and it errors
 			this->theThread = std::thread(&CpuRunProgramThread<cpu_t>::subThreadRunThing, this, code, progLength);
+			this->theThread.detach();//now its running in the background
 			//mu.unlock();
 			//we want theThread to init before we roast it lol
 			//timer.start();
@@ -69,15 +70,15 @@ namespace cpu {
 		}
 
 		inline void killThread() {
-			mu.lock();
-			if (theThread.joinable()) {
-				theThread.detach();
-				//printf("thread detatched from killThread()\n");
-			}
+			// mu.lock();
+			// if (theThread.joinable()) {
+			// 	theThread.detach();
+			// 	//printf("thread detatched from killThread()\n");
+			// }
 			//printf("killthread\n");
-			(*emulator)->interrupt();
 			isStarted.store(false);
-			mu.unlock();
+			(*emulator)->interrupt();
+			// mu.unlock();
 		}
 
 		inline bool isComplete() {
@@ -89,17 +90,20 @@ namespace cpu {
 			auto endTime = std::chrono::milliseconds(maxMilli)
 											+ started;
 
-			while (!isStarted.load() && !isComplete())std::this_thread::sleep_for(std::chrono::microseconds(10));
+			// while (!isStarted.load() && !isComplete())std::this_thread::sleep_for(std::chrono::microseconds(10));
+
+			bool tookTooLong = false;
 
 			while (!isComplete()) {
 				auto now = std::chrono::high_resolution_clock::now();
 				if (now >= endTime) {
 					killThread();
-					return false;
+					tookTooLong = true;
 				}
 				std::this_thread::sleep_for(std::chrono::microseconds(10));
 			}
-			return true;
+
+			return !tookTooLong;
 		}
 
 	};

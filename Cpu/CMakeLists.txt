@@ -36,7 +36,7 @@ target_include_directories(CpuLib
 )
 
 #lets make an executable too
-add_executable(CpuTest src/main.cpp)
+add_executable(CpuTest main.cpp)
 #link the CpuLib so it compiles lol
 target_link_libraries(CpuTest CpuLib)
 

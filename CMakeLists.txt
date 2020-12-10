@@ -7,6 +7,7 @@ enable_testing()
 add_subdirectory(Cpu)
 add_subdirectory(Common)
 add_subdirectory("Evolutionary Assembly")
+add_subdirectory(Simple-Web-Server)
 
 # include_directories(
 #         ${PROJECT_SOURCE_DIR}/**
