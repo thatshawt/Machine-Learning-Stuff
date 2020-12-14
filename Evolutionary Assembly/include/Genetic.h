@@ -25,7 +25,6 @@ using namespace cpu;
 	-sub routines are added and used conditionally.
 	-sub routines are added parts of it are used on condition.
 	-sub routines are added and the conditions to use it are described using a graph
-	-sub routines are added and the conditions to use it are described using a
 */
 
 /*
@@ -51,6 +50,9 @@ namespace gene {
 
 	bool compare(costInfo i, costInfo j);
 
+	vector<vector<int>> generateX(vector<int> (*genFunction)(int x), int min, int max);
+	vector<vector<int>> generateY(vector<int> (*genFunction)(vector<int> x), vector<vector<int>> inputs);
+
 	DNA_T
 	class GeneticAlgorithm {
 	protected:
@@ -71,6 +73,7 @@ namespace gene {
 	public:
 		bool debug = false;
 		bool step = false;
+
 		void train(int generations, int maxSpecies, vector<vector<int>> x, vector<vector<int>> y) {
 			vector<dna_t> dna;
 
@@ -82,9 +85,9 @@ namespace gene {
 
 			//TEST TO SEE IF COST IS WORKING
 			// dna_t solutionDna = {"\nmov r0 69"};
-			// dna_t solutionDna = {"\nmov f2 1", "\nmov f3 1", "\nmov ptr 0", "\nmov r0 mem"};
-			// dna[0] = solutionDna;
-			// printf("solutionDna: '%s'\n", combine((vector<string>)solutionDna).c_str());
+			dna_t solutionDna = {"\nmov f2 1", "\nmov f3 1", "\nmov ptr 0", "\nmov r0 mem"};
+			dna[0] = solutionDna;
+			printf("solutionDna: '%s'\n", combine((vector<string>)solutionDna).c_str());
 
 			assert(dna.size() == maxSpecies);
 
@@ -129,7 +132,7 @@ namespace gene {
 				std::sort(costs.begin(), costs.end(), compare);
 
 				lowestCost = costs[0].cost;
-				printf("costs size: %d, lowest cost: %f, ", (int)costs.size(), lowestCost);
+				printf("lowest cost: %f, ", lowestCost);
 				float avg = 0;
 				const int dnaLength = dna.size();
 				for(int a = 0; a < dnaLength; a++){
@@ -143,7 +146,7 @@ namespace gene {
 				bestDna = &(dna[costs[0].species]);
 
 				if (lowestCost <= 0.00000001f /*&& bestDna.size() != 0*/) {
-					printf("WINNER: prog length: %d, '%s'\n", bestDna->size(), combine(*bestDna).c_str());
+					printf("WINNER:\n species: %d, prog length: %d, '%s'\n", costs[0].species, bestDna->size(), combine(*bestDna).c_str());
 					return;
 				}
 			}
@@ -330,19 +333,8 @@ namespace gene {
 			//also maybe use this for a different selection where the unique survive
 
 			void geneticOperations(vector<dna_t>* dna, vector<costInfo> costs) {
-				//selection
-				//im gonna use tournament selection cus i havent tried that yet
-				//idk kinda cringe to implemet jk its ez mode lets go bois
-				// vector<dna_t> init = vector<dna_t>(*dna);//copy of dna
-				// vector<pair<dna_t, int>> population;
 				vector<pair<dna_t*, int>> population;
 				
-				//BruhIterator iter(&population);
-
-				// for (int i = 0; i < dna->size(); i++) {
-				// 	population.push_back({&dna->at(i), i});
-				// }
-
 				for(int i=0; i < params.tournamentK; i++){
 					population.push_back({&dna->at(costs[i].species), costs[i].species});//add highest performing dna
 				}
@@ -355,15 +347,54 @@ namespace gene {
 
 				std::shuffle(population.begin(), population.end(), std::default_random_engine(time(NULL)));
 
-				// auto pBegin = population.begin();
-				// for (int k = 1; k <= population.size(); k++) {
-				// 	population.erase(pBegin + k);
-				// }
+				//TODO: add crossover parameters
+				const int populationSize = population.size();
+				int crossOverCount = 0;
 
-				for (int i = 0; i < (population.size()); i++) { //iterating throuch the list of programs
-					pair<dna_t*, int>* currentDnaPtr = &population[i];
-					dna_t* realDnaPtr = &((*dna)[currentDnaPtr->second]);
+				for (int i = 0; i < populationSize; i++) {
+					if (frand(1) <= params.crossOverPercent) { //crossover baby
+						pair<dna_t*, int>* currentDna = &population[i];
+						dna_t* parentA = &((*dna)[currentDna->second]);
 
+						pair<dna_t*, int>* selectedDna = &population[irand(population.size() - 1)];
+						dna_t* parentB = &((*dna)[selectedDna->second]);
+
+						const int minProgSize = min(parentB->size(), parentA->size());
+						const int startPoint = irand(minProgSize - 1);
+						const int endPoint = irand(minProgSize-startPoint)+startPoint;
+
+						int offspringIndex = costs[params.tournamentK+crossOverCount].species;
+						dna_t* offspringA = &((*dna)[offspringIndex]);
+
+						//increment crossoverCounter for next offspring
+						crossOverCount = ++crossOverCount % (costs.size() - params.tournamentK);
+
+						offspringIndex = costs[params.tournamentK+crossOverCount].species;
+						dna_t* offspringB = &((*dna)[offspringIndex]);
+						
+						*offspringA = dna_t(*parentA);//clone of parentA
+						*offspringB = dna_t(*parentB);//clone of parentB
+
+						//we are going to continue until we have either reached the end or reached max lines
+						for (int j = startPoint; j < endPoint; j++) {
+							std::string offspringACopy = std::string((*offspringA)[j]);
+							offspringA->at(j) = (*parentB)[j];
+							offspringB->at(j) = offspringACopy;
+						}
+						//make sure we never go past the boundaries of poop
+						crossOverCount = ++crossOverCount % (costs.size() - params.tournamentK);
+					}
+				}
+
+				//MUTATE
+				for (int i = 0; i < costs.size() - params.tournamentK; i++) { //iterating throuch the list of programs
+					// int offspringIndex = costs[params.tournamentK+crossOverCount].species;
+					dna_t* realDnaPtr = &((*dna)[i]);
+
+					// pair<dna_t*, int>* currentDnaPtr = &population[i];
+					// dna_t* realDnaPtr = &((*dna)[currentDnaPtr->second]);
+
+					//do actual mutate
 					for (int j = 0; j < /*currentDna.size()*/realDnaPtr->size()-1; j++) { //iterating inside a singular program
 						
 						//dna_t currentDna = currentDnaPtr->first;
@@ -462,36 +493,9 @@ namespace gene {
 							log("writeOp\n");
 						}
 					}
-
+					// crossOverCount = ++crossOverCount % (costs.size() - params.tournamentK);
 				}
 				
-				//TODO: implement the ability to use crossOver parameters from params variable
-				for (int i = 0; i < (population.size()); i++) {
-					if (frand(1) <= params.crossOverPercent) { //crossover baby
-						pair<dna_t*, int>* currentDna = &population[i];
-						dna_t* realCurrentDna = &((*dna)[currentDna->second]);
-
-						pair<dna_t*, int>* selectedDna = &population[irand(population.size() - 1)];
-						dna_t* realSelectedDna = &((*dna)[selectedDna->second]);
-
-						const int minProgSize = min(realSelectedDna->size(), realCurrentDna->size());
-						const int startPoint = irand(minProgSize - 1);
-						const int endPoint = irand(minProgSize-startPoint)+startPoint;
-
-						//const int maxLines = min(currentDna->size(), min(params.crossOverMax, selectedDna->size()));
-						//const int minLines = min(maxLines, params.cross);
-
-						////select random starting point
-						//const int lines = irand(maxLines-minLines)+minLines;
-
-						//we are going to continue until we have either reached the end or reached max lines
-						for (int j = startPoint; j < endPoint; j++) {
-							std::string temp = std::string((*realCurrentDna)[j]);
-							realCurrentDna->at(j) = (*realSelectedDna)[j];
-							realSelectedDna->at(j) = temp;
-						}
-					}
-				}
 			}
 
 			random_selector<> selector{};

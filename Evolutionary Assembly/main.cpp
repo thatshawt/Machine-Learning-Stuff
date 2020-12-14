@@ -11,6 +11,20 @@
 
 using namespace gene;
 
+vector<int> identityFuncX(int x){
+	vector<int> result;
+	result.push_back(x);
+	return result;
+}
+
+vector<int> identityFuncY(vector<int> x){
+	vector<int> result(REGISTER_SIZE, 0);
+	for(int i=0;i<x.size();i++){
+		result.at(i) = x[0];
+	}
+	return result;
+}
+
 //#include <stdio.h>
 int main() {
 	////printf("%s%s\n", termcolor::red, "one time i bruhed so hard that my cat deid");
@@ -90,14 +104,12 @@ int main() {
 		//---------GENE TEST---------
 		printf("EVOLUTION TEST\n");
 		int generations = 10000000;
-		int species = 300;
-
+		int species             = 50;
+		genz.params.tournamentK = 10;
 		// cpuz.verbose = true;
 		// genz.step = true;
 		
 		genz.params.newDnaChance = 0.95f;
-
-		genz.params.tournamentK = (int)((float)species*0.35f);
 		
 		genz.params.maxProgTime = 5; //5 milliseconds i guess mah boi
 
@@ -114,6 +126,10 @@ int main() {
 								  {5,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0},
 								  {6,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0}
 								  };
+
+		// vector<vector<int>> x = gene::generateX(&identityFuncX, 0, 5);
+		// vector<vector<int>> y = gene::generateY(&identityFuncY, x);
+
 		genz.train(generations, species, x, y);
 		//---------END---------
 	}
@@ -123,3 +139,6 @@ int main() {
 	
 	return 0;
 }
+
+
+
