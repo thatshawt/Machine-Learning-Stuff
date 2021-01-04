@@ -61,6 +61,10 @@
 #endif
 #define FLAGS 4
 
+#ifndef NUMBER_MAX
+#define NUMBER_MAX 100
+#endif
+
 namespace cpu {
 	typedef unsigned char byte;
 
@@ -335,7 +339,7 @@ namespace cpu {
 				typedef std::pair<std::tuple<std::string, MemoryType, MemoryType>, MemoryTypeRange<cpu_t> > bruhRange2;
 
 				//cpu_t number = std::numeric_limits<cpu_t>::max() - 1;
-				cpu_t number = 100;
+				cpu_t number = NUMBER_MAX;
 				printf("number: %d\n", number);
 
 				rangesMap.insert(rangePair{ NUMBER, {-number, number} });

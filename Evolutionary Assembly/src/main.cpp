@@ -19,8 +19,16 @@ vector<int> identityFuncX(int x){
 
 vector<int> identityFuncY(vector<int> x){
 	vector<int> result(REGISTER_SIZE, 0);
-	for(int i=0;i<x.size();i++){
-		result.at(i) = x[0];
+	for(int i=0; i<x.size(); i++){
+		result.at(i) = x[i];
+	}
+	return result;
+}
+
+vector<int> xorWith2FuncY(vector<int> x){
+	vector<int> result(REGISTER_SIZE, 0);
+	for(int i=0; i<x.size(); i++){
+		result.at(i) = x[i] ^ 2;
 	}
 	return result;
 }
@@ -50,7 +58,7 @@ int main() {
 		//printf("running program\n");
 		printf("progLength: %d\n", progLength);
 
-		cpuz.setMemory(0, 69);
+		cpuz.setMemory(0, 69);//simple test to see if setMemory does what it needs to do
 
 		cpuThread.runProgram(&prog[0], progLength);
 		bool completed = cpuThread.sleepUntilComplete(10);
@@ -104,7 +112,7 @@ int main() {
 		//---------GENE TEST---------
 		printf("EVOLUTION TEST\n");
 		int generations = 10000000;
-		int species             = 50;
+		int species             = 20;
 		genz.params.tournamentK = 10;
 		// cpuz.verbose = true;
 		// genz.step = true;
@@ -119,26 +127,69 @@ int main() {
 		genz.params.mutateOpThreshold = 0.01f;
 		genz.params.mutateRange = 2;
 		
-		vector<vector<int>> x = { {1},{2},{3},{4},{5} };
-		vector<vector<int>> y = { {2,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0},
-								  {3,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0},
-								  {4,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0},
-								  {5,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0},
-								  {6,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0}
-								  };
+		//add 1
+		// vector<vector<int>> x = { {1},{2},{3},{4},{5} };
+		// vector<vector<int>> y = { {2,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0},
+		// 						  {3,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0},
+		// 						  {4,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0},
+		// 						  {5,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0},
+		// 						  {6,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0}
+		// 						  };
 
-		// vector<vector<int>> x = gene::generateX(&identityFuncX, 0, 5);
-		// vector<vector<int>> y = gene::generateY(&identityFuncY, x);
+		//identity
+		// vector<vector<int>> x = { {1},{2},{3},{4},{5} };
+		// vector<vector<int>> y = { {1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0},
+		// 						  {2,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0},
+		// 						  {3,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0},
+		// 						  {4,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0},
+		// 						  {5,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0}
+		// 						  };
 
+		vector<vector<int>> x = gene::generateX(&identityFuncX, 0, 5);
+		// vector<vector<int>> y = gene::generateY(&xorWith2FuncY, x);
+		vector<vector<int>> y = gene::generateY(&identityFuncY, x);
+
+		for(int i = 0;i < x.size(); i++){
+			for(int j = 0; j < x[i].size(); j++){
+				printf("x(%d,%d): %d\n", i, j, x[i][j]);
+			}
+		}
+
+		for(int i = 0;i < y.size(); i++){
+			for(int j = 0; j < y[i].size(); j++){
+				printf("y(%d,%d): %d\n", i, j, y[i][j]);
+			}
+		}
+
+		// cpuz.verbose = true;
+
+		auto before = std::chrono::system_clock::now();
 		genz.train(generations, species, x, y);
+		auto after = std::chrono::system_clock::now();
+
+		auto duration = after - before;
+		auto seconds = std::chrono::duration_cast<chrono::seconds>(duration);
+
+		printf("elapsed minutes: %f\n", ((float)seconds.count())/60.0f);
 		//---------END---------
 	}
 	//Sleep(3000);
 
-	getchar();
+	// getchar();
 	
 	return 0;
 }
 
+/*
+this solves the identity problem lol
+
+jgt 89 
+mov ptr mem
+shl mem r5
+and r5 15
+or mem -22
+
+
+*/
 
 

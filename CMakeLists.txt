@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.0.0)
 project(Machine_Learning_Things VERSION 0.1.0)
 
-include(CTest)
+find_package(CxxTest REQUIRED)
 enable_testing()
 
 add_subdirectory(Cpu)

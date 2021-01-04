@@ -77,6 +77,11 @@ namespace gene {
 		void train(int generations, int maxSpecies, vector<vector<int>> x, vector<vector<int>> y) {
 			vector<dna_t> dna;
 
+			if(x.size() != y.size()){
+				printf("ERROR: training data x and y are not the same length");
+				return;
+			}
+
 			for (int species = 0; species < maxSpecies; species++) {
 				dna_t dnaa = getRandomDna();
 				log("init species %d size: %d, '%s'\n\n", species, dnaa.size(), combine((vector<string>)dnaa).c_str());
@@ -85,9 +90,9 @@ namespace gene {
 
 			//TEST TO SEE IF COST IS WORKING
 			// dna_t solutionDna = {"\nmov r0 69"};
-			dna_t solutionDna = {"\nmov f2 1", "\nmov f3 1", "\nmov ptr 0", "\nmov r0 mem"};
-			dna[0] = solutionDna;
-			printf("solutionDna: '%s'\n", combine((vector<string>)solutionDna).c_str());
+			// dna_t solutionDna = {"\nmov f2 1", "\nmov f3 1", "\nmov ptr 0", "\nmov r0 mem"};
+			// dna[0] = solutionDna;
+			// printf("solutionDna: '%s'\n", combine((vector<string>)solutionDna).c_str());
 
 			assert(dna.size() == maxSpecies);
 
@@ -118,6 +123,12 @@ namespace gene {
 
 						this->cost(&cost, expected, result);
 						log("calculated cost: %f\n\n", cost);
+
+						// if(species == 0){
+						// 	printf("\n\n'%s'", combine((vector<string>)dna[species]).c_str());
+						// 	printf("cost of 0: %f", (float)cost);
+						// 	printf("result: %s\n", array_to_string(&result[0], result.size()).c_str());
+						// }
 					}
 					double preCost = cost;
 
@@ -144,8 +155,10 @@ namespace gene {
 				geneticOperations(&dna, costs);
 
 				bestDna = &(dna[costs[0].species]);
+				
+				// getchar();
 
-				if (lowestCost <= 0.00000001f /*&& bestDna.size() != 0*/) {
+				if (lowestCost <= 0.01f /*&& bestDna.size() != 0*/) {
 					printf("WINNER:\n species: %d, prog length: %d, '%s'\n", costs[0].species, bestDna->size(), combine(*bestDna).c_str());
 					return;
 				}
@@ -302,12 +315,13 @@ namespace gene {
 				// print_array(&program->at(0), progLength);
 				cpuThread.runProgram(&program->at(0), progLength);
 				const bool tookTooLong = cpuThread.sleepUntilComplete(params.maxProgTime);
-				// if (!tookTooLong)printf("took too long\n");
+				// if (tookTooLong)printf("took too long\n");
 
 				vector<int> registers(16, 0);
 				if(!tookTooLong){
 					for (int i = 0; i < 16; i++) {
-						registers.push_back(cpu->getRegister(i));
+						// registers.push_back(cpu->getRegister(i));
+						registers.at(i) = cpu->getRegister(i);
 					}
 				}
 				//printf("getresult finish\n");

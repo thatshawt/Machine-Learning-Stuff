@@ -5,9 +5,9 @@ if(NOT MSVC)
     endif()
     
     if(BUILD_TESTING)
-        add_executable(sws_io_test io_test.cpp)
-        target_link_libraries(sws_io_test simple-web-server)
-        add_test(NAME sws_io_test COMMAND sws_io_test)
+        # add_executable(sws_io_test io_test.cpp)
+        # target_link_libraries(sws_io_test simple-web-server)
+        # add_test(NAME sws_io_test COMMAND sws_io_test)
     
         add_executable(sws_parse_test parse_test.cpp)
         target_link_libraries(sws_parse_test simple-web-server)

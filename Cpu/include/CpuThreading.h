@@ -18,11 +18,11 @@ namespace cpu {
 		std::thread theThread;
 		std::mutex mu;
 
-		inline void subThreadRunThing(byte* code, int progLength) {
+		inline void subThreadRunThing(byte* code, int progLength, bool reset) {
 			//printf("subThread id: %d\n", std::this_thread::get_id());
 			//emulator->resetRegisters();
 			//printf("actually run program\n");
-			(*emulator)->runProgram(code, progLength);
+			(*emulator)->runProgram(code, progLength, reset);
 			isCompleteZ.store(true);
 			//printf("thread finished\n");
 			//killThread();
@@ -47,7 +47,7 @@ namespace cpu {
 			//printf("cpuSim: %p, emulator: %p, this: %p\n", cpuSim, emulator, this);
 		}
 
-		inline void runProgram(byte* code, int progLength) {
+		inline void runProgram(byte* code, int progLength, bool reset = false) {
 			//printf("run program stasrt\n");
 			// if(init)killThread(); //FIXME: init never gets set to false and the cpu always gets interrupted
 			this->isCompleteZ.store(false);
@@ -57,7 +57,7 @@ namespace cpu {
 			//mu.lock();
 			//(*emulator)->resetInterrupt();
 			//BUG: theThread is joinable and it errors
-			this->theThread = std::thread(&CpuRunProgramThread<cpu_t>::subThreadRunThing, this, code, progLength);
+			this->theThread = std::thread(&CpuRunProgramThread<cpu_t>::subThreadRunThing, this, code, progLength, reset);
 			this->theThread.detach();//now its running in the background
 			//mu.unlock();
 			//we want theThread to init before we roast it lol
@@ -103,7 +103,7 @@ namespace cpu {
 				std::this_thread::sleep_for(std::chrono::microseconds(10));
 			}
 
-			return !tookTooLong;
+			return tookTooLong;
 		}
 
 	};

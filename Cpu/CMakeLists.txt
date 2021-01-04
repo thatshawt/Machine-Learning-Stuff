@@ -36,9 +36,19 @@ target_include_directories(CpuLib
 )
 
 #lets make an executable too
-add_executable(CpuTest main.cpp)
+add_executable(CpuTest src/main.cpp)
 #link the CpuLib so it compiles lol
 target_link_libraries(CpuTest CpuLib)
+
+find_package(CxxTest)
+if(CXXTEST_FOUND)
+    include_directories(${CXXTEST_INCLUDE_DIR})
+    enable_testing()
+
+    CXXTEST_ADD_TEST(unittest_cpu foo_test2.cc
+                      ${CMAKE_CURRENT_SOURCE_DIR}/tests/test1.h)
+    target_link_libraries(unittest_cpu EvolutionLib) # yea we need this
+endif()
 
 set(CPACK_PROJECT_NAME ${PROJECT_NAME})
 set(CPACK_PROJECT_VERSION ${PROJECT_VERSION})
