@@ -1,23 +1,7 @@
-I made this to practice my programming and try to create something that really interests me, machine learning. 
-Although my prefered language is Java, I'm still learning and c++ will have to do.
-My main reasons for choosing C++ over Java for these projects was because it allows for more native interations with the gpu, I want to learn about memory management, and because having C++ under my toolbelt is just good in general.
+I made this to improve my software skills.
 
-Project Description:
-  Common:
-  Contains one helper header with stuff that I reuse.
+The most active sub-projects are "Cpu" and "Evolutionary Assembly".
 
-  Cpu:
-  This contains an emulator for a cpu that exists purely for educational purposes and
-  an assembler.
-  
-  Evolutionary Assembly:
-  This is my attempt on genetic programming using my emulator and assembler.
-  
-  Machine Learning Stuff:
-  This is where I try to implement the Spiking Neuron and STDP learning.
-  I want to eventually apply genetic algorithms to it somehow.
-  
-  Cellular Automata:
-  I'm not sure if I'm going to pursue this project but it was going
-  to be a framework for simulating cellular automata on a grid of any
-  number of dimensions.
+#Building
+If you want to build this and try it out for yourself for some reason go ahead lol.
+I'm new to cmake but I used it to as the make system and I guess you can figure it out.
