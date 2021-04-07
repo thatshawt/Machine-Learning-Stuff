@@ -1,1 +1,1 @@
-mov r0 mem ; by default 
+mov r0 mem ; this is the solution to the indentity function thing

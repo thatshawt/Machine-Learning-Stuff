@@ -1,7 +1,7 @@
 #pragma once
 
 #ifndef MAX_PROGLENGTH
-#define MAX_PROGLENGTH 0xFFFF
+#define MAX_PROGLENGTH 0xFFFF //i just chose this randomly 
 #endif
 
 //#ifndef GENETIC_H
@@ -17,7 +17,7 @@
 #include <assert.h>
 ////////////////
 
-using namespace std;//bruh ew get those stds out of here
+using namespace std; //stds
 using namespace cpu;
 //TODO: cure cancer
 
@@ -25,7 +25,27 @@ using namespace cpu;
 	-sub routines are added and used conditionally.
 	-sub routines are added parts of it are used on condition.
 	-sub routines are added and the conditions to use it are described using a graph
+	-screw sub routines we are going full rat mode in this bibba
+	-sub routines can be learned as a result of meta evolution.
+	-we need to identify which order of evolution we want before we start out experiment.
+	-1st order is the one where you use evolution to solve a problem directly.
+	-2nd order evolution is when you evolve a program that produces a solution program.
+	-3rd order evolution is when you evolve a program that generates a 2nd order evolution program.
+	-without modifications i suspect that 3rd order evolution will take a really long time, but each time you go up
+	 a level you get exponential gains. exponential increase in efficiency however probably leads to exponential
+	 increase in time.
+	-i have not even implemented the tools to enable 2nd order evolution but i suppose it isnt too hard to make
+	-my question right now is whether to first enable 2nd order evolution or to implement speciation to enable more
+	efficient evolution
+	-something funny to consider is that i am programming the first iteration of the evolver but eventually it will
+	program itself rendering me useless.
+	
 */
+
+//TODO: allow the evolver to use macros in its programs
+//i gotta add muli-line macros to increase its functionality
+//-theoretically tho i dont have to add anything and a 2nd(3rd?) order evolver can evolve in 
+// these features if it sees fit. its possible as long as the program is turing complete which im sure it is.
 
 /*
 list of bruh moments:
@@ -40,7 +60,7 @@ and ptr r-10
 or mem r-66
 */
 
-typedef vector<string> dna_t;//yooooo letsss gooooo, lol stds
+typedef vector<string> dna_t; //one dna = one program
 
 namespace gene {
 	struct costInfo {
@@ -158,7 +178,7 @@ namespace gene {
 				
 				// getchar();
 
-				if (lowestCost <= 0.01f /*&& bestDna.size() != 0*/) {
+				if (lowestCost == 0.0f /*&& bestDna.size() != 0*/) {
 					printf("WINNER:\n species: %d, prog length: %d, '%s'\n", costs[0].species, bestDna->size(), combine(*bestDna).c_str());
 					return;
 				}
@@ -203,7 +223,6 @@ namespace gene {
 		int maxProgTime = 10;//max amount of time a program can last in milliseconds
 	};
 
-	//ill learn this stuff eventually bruv dont worry atleast im giving credit
 		CPU_TEMPLATE
 		class GeneticAssemblyRatz : public GeneticAlgorithm<dna_t> {
 		public:
@@ -306,7 +325,6 @@ namespace gene {
 			vector<unsigned char> progTrashEdition;
 			vector<unsigned char>* program;
 			cpu::CpuSimulator<cpu_t>* cpu;
-			// cpu::CpuRunProgramThread<cpu_t> cpuThread = cpu::CpuRunProgramThread<cpu_t>(&cpu);
 			cpu::CpuRunProgramThread<cpu_t> cpuThread { &cpu };
 
 			vector<int> getResult(vector<int>* inputs) {
@@ -350,7 +368,7 @@ namespace gene {
 				vector<pair<dna_t*, int>> population;
 				
 				for(int i=0; i < params.tournamentK; i++){
-					population.push_back({&dna->at(costs[i].species), costs[i].species});//add highest performing dna
+					population.push_back({&dna->at(costs[i].species), costs[i].species}); //add highest performing dna
 				}
 
 				//we are just gonna do this now since we got nothing better to do

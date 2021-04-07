@@ -61,6 +61,7 @@
 #endif
 #define FLAGS 4
 
+//this kinda sucks cus like i need to get this gucci and without floating point numbers that might just suck
 #ifndef NUMBER_MAX
 #define NUMBER_MAX 100
 #endif
@@ -78,6 +79,7 @@ namespace cpu {
 		GRAPHICS = 6
 	};
 
+//this looks ugly but iris was iris
 #define NUMBER cpu::MemoryType::NUMBER
 #define REGISTER cpu::MemoryType::REGISTER
 #define MEMORY cpu::MemoryType::MEMORY
@@ -99,7 +101,7 @@ namespace cpu {
 	};
 
 	CPU_TEMPLATE
-	struct __attribute__((__packed__))Instruction{
+	struct Instruction{
 		unsigned char opcode;
 		cpu_t left;
 		cpu_t right;
@@ -330,7 +332,7 @@ namespace cpu {
 				case GP:
 					return &graphics[0];
 				}
-				return &memory[0];
+				return &memory[0];//default to memory and dont go sicco mode, you know
 			}
 
 			void initMaps() {
@@ -490,6 +492,7 @@ namespace cpu {
 				gp = between(gp, 0, GRAPHICS_SIZE - 1);
 			}
 
+			//TODO: i need to add error flags so its easier for the evolution to evolve error catching
 			bool executeOp(cpu_t op, cpu_t left, cpu_t right, int progLength) {
 				PointerFlags pFlag1 = getPointerFlag1();
 				cpu_t* pMemory1 = flagToMemory(pFlag1);
@@ -508,7 +511,13 @@ namespace cpu {
 					printf("ip: %d\n", ip);
 					//printf("left: "); bin(left); printf("\nright: "); bin(right); printf("\n");
 				}
-				switch (op) {
+				//TODO: i cannot allow a randomly generated program mess up my computer so i need to like put this thing
+				//in a vault bruh, like i need to limit every thing that it can access like the memory register
+
+				//ima do that by adding a safety check at every single instruction which will slow down execution but
+				//its seriously not that big of a deal rn since im not even using my hardware to its fullest capabilities
+				//yet HUEHUEHEUHEUEHUEHUUEH
+				switch (op) {//this needs to stay a switch so it stays fast XD
 				case 0x00://mov register number
 					registers[left] = right;
 					if (verbose)printf("mov %d to r%d\n", right, left);

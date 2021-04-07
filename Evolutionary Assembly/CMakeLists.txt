@@ -6,6 +6,7 @@ add_library(
     #Genetic.h
     src/Genetic.cpp
 )
+
 #CpuLib already includes CommonsLib so idk if we need to do that again
 target_link_libraries(EvolutionLib CpuLib)
 target_include_directories(EvolutionLib
