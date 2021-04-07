@@ -44,6 +44,7 @@
 //#define CPU_T template<typename cpu_t> \
 //typename std::enable_if<std::is_arithmetic<cpu_t>::value>::type
 
+//this is used when initializing the cpu to give it this many registers and wahtnot
 #ifndef REGISTER_SIZE
 #define REGISTER_SIZE 16
 #endif
@@ -52,10 +53,13 @@
 #define MEMORY_SIZE 0xFFF
 #endif
 
+//this is not implemented rn but i forgot to remove it and i plan on adding it again in the future so its staying here
+//as a reminder to me to implement it
 #ifndef GRAPHICS_SIZE
 #define GRAPHICS_SIZE 20
 #endif
 
+//this is needed purely for the genetic algorithm so it knows the range of flags it can choose from
 #ifdef FLAGS
 #undef FLAGS
 #endif
@@ -67,8 +71,16 @@
 #endif
 
 namespace cpu {
+	//idk why i felt the need to do this
 	typedef unsigned char byte;
 
+	//i really need some sort of documentation on the vm
+	//ok so this is like in assembly how there are different types and stuff
+	//like if i typed "mov r0, 1"
+	//thats move 1 into register 0
+	//1 is a MemoryType of NUMBER, and the register 0 is... a REGISTER MemoryType
+	//FLAG is used when you use flags who would have known
+	//GRAPHICS is currently unused and NOTHING is for everything else
 	enum class MemoryType {
 		NUMBER = 0,
 		REGISTER = 1,
@@ -80,6 +92,8 @@ namespace cpu {
 	};
 
 //this looks ugly but iris was iris
+//i just added this so i wouldnt have to type out all the cpu::MemoryType stuff
+//i feel like this is redundant in some way and there is a feature of c++ that solves this but eh
 #define NUMBER cpu::MemoryType::NUMBER
 #define REGISTER cpu::MemoryType::REGISTER
 #define MEMORY cpu::MemoryType::MEMORY
@@ -88,18 +102,28 @@ namespace cpu {
 #define NOTHING cpu::MemoryType::NOTHING
 #define POINTER cpu::MemoryType::POINTER
 
+	//honestly forgot what this does LOL
+	//i think its only use is for the genetic evolver
 	struct MemoryTypeData {
 		bool hasSuffix;
 		MemoryTypeData(bool hasSuffix);
 		MemoryTypeData();
 	};
 
+	//ok now this one is epic because OpArgument is a complete representation of an instruction argument
+	//my naming is inconsistent but i really dont know
+	//so anyways an example, "mov r0, 1"
+	//we got two OpArgument things here, the r0 and the 1
+	//r0 is type REGISTER and val 0
+	//1 is type NUMBER and val 1
 	CPU_TEMPLATE
 	struct OpArgument {
 		MemoryType type;
 		cpu_t val;
 	};
 
+	//i think this is unused?
+	//i tried to represent an entire instruction in a cool way but idk i never used it
 	CPU_TEMPLATE
 	struct Instruction{
 		unsigned char opcode;
@@ -112,26 +136,39 @@ namespace cpu {
 	//idk about NOTHING type but whatever breh
 	MemoryType fromPrefix(std::string prefix);
 
+	//again this is only used by the genetic algorithm to know in what range its allowed to generate opcodes
 	CPU_TEMPLATE
 	struct MemoryTypeRange {
 		cpu_t min;
 		cpu_t max;
 	};
 
+	//in retrospect this is so ugly
 	struct OpArgCombos {
 		std::vector<MemoryType> left;
 		std::vector<MemoryType> right;
 		OpArgCombos(std::vector<MemoryType> left, std::vector<MemoryType> right);
 	};
 
+	//used only by yours truly and keeps track of which types have "prefixes"
+	//like, registers do because you use register with an 'r', and memory use prefixes too cus they are used with an 'm'
 	extern std::map<MemoryType, MemoryTypeData> memoryTypeData;
+	
+	//this one maps opcodes mneumonics to numbers, the numbers are not totally arbritary and correspond to cases
+	//in that really long 'execute' method that just has a giant switch statement
 	extern std::map<std::string, int> opMap;
+	
+	//this is used only by genetic algorithm and it keeps track of what memory types you can use with each opcode
 	extern std::map<std::string, OpArgCombos> opArgs;
+
+	//this is used during "assembling" when you define macros, it keeps track of the macros you made
 	extern std::map<std::string, std::string> macroMap;
+
+	//this is used by the genetic algorithm and it keeps track of the ranges that memorytypes can be
 	extern std::map<MemoryType, MemoryTypeRange<long>> memoryRanges;
 
 	//TODO: add range checks for the different memory types
-	CPU_TEMPLATE
+	CPU_TEMPLATE//this parses stuff like "r2" into type=REGISTER, val=2
 		inline OpArgument<cpu_t> string_to_arg(std::string arg) {
 		if (arg.length() <= 0) return { NOTHING,0 };
 		if (opMap.count(toLower(arg))) return { NOTHING, -1 };//throw error cus its not supposed to be an op
@@ -186,6 +223,7 @@ namespace cpu {
 		}
 	}
 
+	//this does the opposite
 	CPU_TEMPLATE
 		inline std::string arg_to_string(OpArgument<cpu_t> arg) {
 		if (arg.type == NOTHING) return std::string("");
@@ -200,13 +238,17 @@ namespace cpu {
 
 	int opOffset(short op, int leftType, int rightType);
 
-	extern bool init;
-	//bool init = false;
+
+
 
 	inline std::pair<const std::string, OpArgCombos> toCombo(std::string op, std::vector<MemoryType> left, std::vector<MemoryType> right) {
 		return std::pair<const std::string, OpArgCombos>{op, { left, right }};
 	}
 
+	extern bool init;
+	//bool init = false;
+
+	//this is kinda ugly but idk its used to initialize all those variables up there
 	inline void initMaps() {
 		//initMaps_IMP();
 		if (init)return;
@@ -282,11 +324,15 @@ namespace cpu {
 		//opArgs.insert(toCombo("gmov", { REGISTER,MEMORY,/*GRAPHICS,*/FLAG,NUMBER }, {}));
 	}
 
+	//Mp = memory pointer
+	//gp = graphics pointer, which is to be implemented
 	enum PointerFlags {
 		MP = 1,
 		GP = 2
 	};
 
+	//the good stuff right here
+	//this is basically the vm
 	CPU_TEMPLATE
 		class CpuSimulator {
 		private:
@@ -304,6 +350,7 @@ namespace cpu {
 			cpu_t graphics[GRAPHICS_SIZE];//the graphics memory
 			cpu_t gp = 0;//graphics pointer
 
+			//i want to use this but joe mama lol
 			std::atomic<bool> interruptz{ false };
 
 			PointerFlags getPointerFlag1() {//TODO: error check here
@@ -335,6 +382,7 @@ namespace cpu {
 				return &memory[0];//default to memory and dont go sicco mode, you know
 			}
 
+			//another init function?? gawd to the dayum
 			void initMaps() {
 				typedef std::pair<MemoryType, MemoryTypeRange<cpu_t>> rangePair;
 				typedef std::pair<std::tuple<std::string, MemoryType>, MemoryTypeRange<cpu_t> > bruhRange;
@@ -363,10 +411,16 @@ namespace cpu {
 				//bruhMap2.insert(bruhRange2{ {"mov", GRAPHICS, NUMBER}, {0, number} });
 			}
 		public:
+			//debug mode or not
 			bool verbose = false;
+
+			//allows you step through the code on the console
 			bool step = false;
+
+			//another range map thing gawd to the DAYUM
 			std::map<MemoryType, MemoryTypeRange<cpu_t>> rangesMap;
 
+			//this has been lost to time lol idk why i named it bruhMap and bruhMap2
 			std::map<std::tuple<std::string, MemoryType>, MemoryTypeRange<cpu_t> > bruhMap;
 			std::map<std::tuple<std::string, MemoryType, MemoryType>, MemoryTypeRange<cpu_t> > bruhMap2;
 
@@ -388,7 +442,8 @@ namespace cpu {
 					printf("r%d: %d\n", i, registers[i]);
 				}
 			}
-
+			
+			//put everything back to default
 			void reset() {
 				resetRegisters();
 				resetMemory();
@@ -460,6 +515,7 @@ namespace cpu {
 				return 2 * sizeof(cpu_t) + 1;
 			}
 
+			//hell yea
 			void runProgram(byte* code, int progLength, bool doReset = false) {
 				//dumpRegisters();
 				if (doReset)reset();
@@ -481,18 +537,21 @@ namespace cpu {
 					}
 
 					//if (verbose)printBitArray(code, getOpSize(), 0);
-					executeOp(op, progLength);
+					executeOp(op, progLength);//this is it right here
 					//dumpFlags();
 					//dumpPointers();printf("\n");
 				}
 			}
 
+			//the point of this vm is to be very robust so instead of dying when indexing out of bounds,
+			//it just doesnt die and sets the index so something that wont kill it
 			void rangeCheckPointers() {
 				mp = between(mp, 0, MEMORY_SIZE - 1);
 				gp = between(gp, 0, GRAPHICS_SIZE - 1);
 			}
 
 			//TODO: i need to add error flags so its easier for the evolution to evolve error catching
+			//TODO2: do TODO
 			bool executeOp(cpu_t op, cpu_t left, cpu_t right, int progLength) {
 				PointerFlags pFlag1 = getPointerFlag1();
 				cpu_t* pMemory1 = flagToMemory(pFlag1);
@@ -1113,10 +1172,12 @@ namespace cpu {
 			//ill look back at this and not understand a single word of it
 			cpu_t jmp_range_check(cpu_t left, int progLength) {
 				// if (left > 99999 || left < -99999)throw 20;//idk if this works
+				//i dont understand this monstrosity but im prettyy sure it does same thing as rangeCheckPointers
 				return std::min(std::max(0, getOpSize() * ((int)((float)left / (float)getOpSize()))), progLength-1);
 				// return between(left, 0, progLength-1);
 			}
 
+			//almost the same as runProgram but not
 			bool executeOp(std::vector<byte> code, int progLength) {
 				if (step)getchar();
 				cpu_t op = code[0];
@@ -1136,6 +1197,9 @@ namespace cpu {
 			}
 
 			// CPU_TEMPLATE
+			//this is the creation im the most proud of
+			//its ugly but im proud
+			//this bad boy turns strings into C O D E
 			static inline int assemble(byte* program, const char str[], int strLengthA) {
 				bool verbose = false;
 				const int strLength = strLengthA + 1;

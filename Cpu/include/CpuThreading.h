@@ -3,6 +3,11 @@
 #include <thread>
 #include <mutex>
 
+/*
+This whole thing is used to see how long a program runs for so we kill it if it runs for too long.
+used by the genetic algorithm for purpose above.
+*/
+
 namespace cpu {
 	CPU_TEMPLATE
 	class CpuRunProgramThread{

@@ -1,6 +1,9 @@
 #include <string>
 #include <vector>
 
+/*
+this file is doesnt do anything yet, im trying to be more faithful to the NEAT paper on this file
+*/
 namespace genes{
 
     struct gene{

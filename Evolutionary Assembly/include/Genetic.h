@@ -63,6 +63,8 @@ or mem r-66
 typedef vector<string> dna_t; //one dna = one program
 
 namespace gene {
+	//stores information about the cost
+	//i want to say that its self explanatory but someone might yell at me if i write comments
 	struct costInfo {
 		int species;
 		double cost;
@@ -70,6 +72,7 @@ namespace gene {
 
 	bool compare(costInfo i, costInfo j);
 
+	//helper functions for generating training data
 	vector<vector<int>> generateX(vector<int> (*genFunction)(int x), int min, int max);
 	vector<vector<int>> generateY(vector<int> (*genFunction)(vector<int> x), vector<vector<int>> inputs);
 
@@ -94,14 +97,17 @@ namespace gene {
 		bool debug = false;
 		bool step = false;
 
+		//this is the part where we do all the stuff, selection, mutation, crossover, etc.
 		void train(int generations, int maxSpecies, vector<vector<int>> x, vector<vector<int>> y) {
-			vector<dna_t> dna;
+			vector<dna_t> dna;//all the dna
 
+			//just incase
 			if(x.size() != y.size()){
 				printf("ERROR: training data x and y are not the same length");
 				return;
 			}
 
+			//initialize the dna to random dna
 			for (int species = 0; species < maxSpecies; species++) {
 				dna_t dnaa = getRandomDna();
 				log("init species %d size: %d, '%s'\n\n", species, dnaa.size(), combine((vector<string>)dnaa).c_str());
@@ -116,9 +122,21 @@ namespace gene {
 
 			assert(dna.size() == maxSpecies);
 
+			//main loop
+			/*
+			what it does:
+			1.applyDna, loads program into vm
+			2.run the program and calculate the cost(how bad it did)
+			3.repeat step 2 for all the training data so we can see how bad it does for everything
+			4.store its average bad score in an array or somethinhg
+			5.repeat steps 1-4 until we did all the species
+			6.kill the worst performing species and mutate and crossover the rest
+			7.go back to step 1
+			8.profit
+			*/
 			for (int gen = 0; gen < generations; gen++) {
 				printf("Generation %d, ", gen);
-				vector<costInfo> costs(maxSpecies, { 0,0 });
+				vector<costInfo> costs(maxSpecies, { 0,0 });//costs are stored per generation for each species
 				for (int species = 0; species < maxSpecies; species++) {
 					log("Species_Start: %d\n", species);
 					// printf("'%s'\n", combine((vector<string>)dna[species]).c_str());
@@ -141,7 +159,7 @@ namespace gene {
 						auto result = getResult(&x[i]);
 						// printf("result: %s\n", array_to_string(&result[0], result.size()).c_str());
 
-						this->cost(&cost, expected, result);
+						this->cost(&cost, expected, result);//how bad it did
 						log("calculated cost: %f\n\n", cost);
 
 						// if(species == 0){
@@ -172,7 +190,7 @@ namespace gene {
 				avg /= (float)dnaLength;
 				printf("average program length: %f\n", avg);
 				
-				geneticOperations(&dna, costs);
+				geneticOperations(&dna, costs);//mutation, crossover, and kill the bad ones
 
 				bestDna = &(dna[costs[0].species]);
 				
@@ -237,6 +255,7 @@ namespace gene {
 				//printf("cpuThread in genetic: %p\n", &(this->cpuThread));
 			}
 			
+			//generates a single opcode 
 			dna_t getRandomSingleDna() {
 				dna_t dna;
 				string op = getRandomOp();
@@ -246,6 +265,7 @@ namespace gene {
 				return dna;
 			}
 
+			//mutates the left argument's value in an opcode
 			void mutateOpArgValLeft(string op, cpu::OpArgument<cpu_t>* left) {
 				MemoryType argType = left->type;
 				MemoryTypeRange<cpu_t> range = (*cpu).bruhMap.count({ op,argType }) ? (*cpu).bruhMap.at({ op,argType }) : (*cpu).rangesMap.at(argType);
@@ -265,6 +285,7 @@ namespace gene {
 				//left->val = (int)drand((long long)max - (long long)min + 1) + (long long)min;
 			}
 
+			//mutates the right argument's value in an opcode
 			void mutateOpArgValRight(string op, cpu::OpArgument<cpu_t>* left, cpu::OpArgument<cpu_t>* right) {
 				MemoryType argType = right->type;
 				MemoryTypeRange<cpu_t> range = (*cpu).bruhMap2.count({ op, left->type, argType }) ? (*cpu).bruhMap2.at({ op, left->type, argType }) : (*cpu).rangesMap.at(argType);
@@ -286,6 +307,7 @@ namespace gene {
 			}
 
 			//TODO: test this to see if it needs improvements
+			//get the differenece between two opcodes
 			double dnaDifference(dna_t dna1, dna_t dna2) {
 				vector<int> dna1Ops;
 				vector<int> dna2Ops;
@@ -323,7 +345,7 @@ namespace gene {
 			const int maxProgLength = 0xFFFF;     //why not idk man
 			int progLength = 0;
 			vector<unsigned char> progTrashEdition;
-			vector<unsigned char>* program;
+			vector<unsigned char>* program;//forgot why i added two but the pointer just points to the other one
 			cpu::CpuSimulator<cpu_t>* cpu;
 			cpu::CpuRunProgramThread<cpu_t> cpuThread { &cpu };
 
